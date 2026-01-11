@@ -22,22 +22,44 @@ const TicketView = ({ user }: { user: User }) => {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [error, setError] = useState('');
 
   const loadData = async () => {
     if (!id) return;
-    const t = await firebase.getTicketById(id);
-    if (t) {
-      setTicket(t);
-      const c = await firebase.getComments(id);
-      setComments(c);
-    } else {
-      navigate('/');
+    setError('');
+    try {
+      const t = await firebase.getTicketById(id);
+      if (t) {
+        setTicket(t);
+        const c = await firebase.getComments(id);
+        setComments(c);
+      } else {
+        navigate('/');
+      }
+    } catch (err: any) {
+      console.error("Failed to load ticket data", err);
+      setError('Failed to load ticket. Access denied or document missing.');
     }
   };
 
   useEffect(() => {
     loadData();
   }, [id, navigate]);
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-block p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+          <XCircle className="w-8 h-8 mx-auto mb-2" />
+          <h3 className="font-bold text-lg">Error</h3>
+          <p>{error}</p>
+          <button onClick={() => navigate('/')} className="mt-4 text-sm underline hover:text-red-800">
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleStatusChange = async (status: TicketStatus) => {
     if (!ticket) return;
