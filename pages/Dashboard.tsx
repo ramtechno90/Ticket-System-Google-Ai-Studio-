@@ -6,7 +6,8 @@ import {
   Filter, 
   CheckCircle2, 
   ArrowRight,
-  Activity
+  Activity,
+  UserPlus
 } from 'lucide-react';
 import { firebase } from '../services/firebaseService';
 import { Ticket, User, UserRole, TicketStatus } from '../types';
@@ -63,13 +64,22 @@ const Dashboard = ({ user }: { user: User }) => {
             Welcome back, {user.name}. Monitoring {stats.open} active manufacturing issues.
           </p>
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex gap-2">
           {user.role === UserRole.CLIENT_USER && (
             <Link
               to="/new-ticket"
               className="inline-flex items-center justify-center w-full md:w-auto px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-all active:scale-95"
             >
               Raise New Issue
+            </Link>
+          )}
+          {(user.role === UserRole.SUPPORT_AGENT || user.role === UserRole.ADMIN || user.role === UserRole.SUPERVISOR) && (
+            <Link
+              to="/create-user"
+              className="inline-flex items-center justify-center w-full md:w-auto px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-all active:scale-95"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Create User
             </Link>
           )}
         </div>

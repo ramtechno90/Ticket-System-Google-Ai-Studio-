@@ -13,17 +13,34 @@ const NewTicket = ({ user }: { user: User }) => {
     description: '',
     category: TicketCategory.TECHNICAL_SUPPORT
   });
+  const [files, setFiles] = useState<File[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const ticket = await firebase.createTicket(formData);
+      const attachments: string[] = [];
+      for (const file of files) {
+        const url = await firebase.uploadFile(file);
+        attachments.push(url);
+      }
+
+      const ticket = await firebase.createTicket({
+        ...formData,
+        attachments
+      });
       navigate(`/ticket/${ticket.id}`);
     } catch (err) {
+      console.error(err);
       alert('Failed to create ticket');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
   };
 
@@ -76,10 +93,20 @@ const NewTicket = ({ user }: { user: User }) => {
             />
           </div>
 
-          <div className="p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-center">
+          <div className="p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-center relative hover:bg-gray-100 transition-colors">
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
             <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Click to upload or drag and drop</p>
-            <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+            <p className="text-sm text-gray-600 font-medium">
+              {files.length > 0 ? `${files.length} file(s) selected` : 'Click to upload or drag and drop'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {files.length > 0 ? files.map(f => f.name).join(', ') : 'PNG, JPG, PDF up to 10MB'}
+            </p>
           </div>
 
           <div className="flex items-start space-x-3 bg-blue-50 p-4 rounded-xl">

@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import TicketView from './pages/TicketView';
 import NewTicket from './pages/NewTicket';
+import CreateUser from './pages/CreateUser';
 import { firebase } from './services/firebaseService';
 import { User as UserType, UserRole, Notification } from './types';
 
@@ -338,6 +339,7 @@ const App = () => {
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/ticket/:id" element={<TicketView user={user} />} />
             <Route path="/new-ticket" element={<NewTicket user={user} />} />
+            <Route path="/create-user" element={<CreateUser />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
