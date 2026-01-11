@@ -131,10 +131,16 @@ const TicketView = ({ user }: { user: User }) => {
           {ticket.attachments.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-2">
               {ticket.attachments.map((a, i) => (
-                <div key={i} className="flex items-center space-x-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-600">
+                <a
+                  key={i}
+                  href={a}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors"
+                >
                   <Paperclip className="w-3 h-3" />
-                  <span>doc-{i+1}.pdf</span>
-                </div>
+                  <span>Attachment {i+1}</span>
+                </a>
               ))}
             </div>
           )}

@@ -43,6 +43,9 @@ const CreateUser = () => {
       const newUid = userCred.user.uid;
 
       // 2. Create Firestore Profile (using main app's db which has admin rights)
+      // We use the main 'db' instance (authenticated as the current Support Agent) to write the user profile.
+      // This allows us to securely set the 'role' field, which a self-registered user (tempAuth) might not be trusted to do
+      // depending on strict security rules. Our rules allow isManufacturer() to write to any user doc.
       await setDoc(doc(db, 'users', newUid), {
         email: formData.email,
         name: formData.name,
