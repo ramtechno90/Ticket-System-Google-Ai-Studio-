@@ -75,4 +75,11 @@ You may encounter an error like `The query requires an index`. This is normal fo
     *   `tickets`: `clientId` (ASC) + `updatedAt` (DESC)
     *   `comments`: `ticketId` (ASC) + `timestamp` (ASC)
 
+### Troubleshooting
+
+*   **"Missing or insufficient permissions"**: This often happens if the **Firestore User Profile** is missing for the logged-in user.
+    *   Ensure you have manually created the user document in the `users` collection as described in the "Demo Accounts Setup" section.
+    *   The Document ID MUST match the Authentication UID.
+    *   If you are testing locally and cleared your database, you must recreate these user documents.
+
 *Note: The `firestore.rules` file defines access policies. `storage.rules` defines file upload policies.*
