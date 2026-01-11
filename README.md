@@ -55,3 +55,14 @@ To make the "Demo Accounts" buttons on the login page work, verify you have crea
 
 3. Run the app:
    `npm run dev`
+
+### Security Rules
+
+To secure your data, you must apply the security rules.
+
+1.  Go to the **Firestore Database** section in the Firebase Console.
+2.  Click on the **Rules** tab.
+3.  Copy the contents of `firestore.rules` (the top part starting with `service cloud.firestore`) and paste it into the editor.
+4.  Click **Publish**.
+
+*Note: The `firestore.rules` file also contains Storage rules at the bottom if you decide to implement file uploads later.*
