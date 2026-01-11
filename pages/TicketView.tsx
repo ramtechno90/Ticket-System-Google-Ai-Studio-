@@ -12,7 +12,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react';
-import { firebase } from '../services/mockFirebase';
+import { firebase } from '../services/firebaseService';
 import { Ticket, User, UserRole, TicketStatus, Comment } from '../types';
 import { STATUS_COLORS, CATEGORY_ICONS } from '../constants';
 

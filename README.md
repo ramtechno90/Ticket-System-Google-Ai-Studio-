@@ -16,5 +16,20 @@ View your app in AI Studio: https://ai.studio/apps/drive/1SQErHJYbBlgS3_CNL7qMTW
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+3. **Firebase Setup:**
+   - Create a project in the [Firebase Console](https://console.firebase.google.com/).
+   - Enable **Authentication** and set up the **Email/Password** sign-in method.
+   - Create a **Cloud Firestore** database.
+   - Copy the web app configuration from Project Settings.
+   - Create a `.env` file (or add to `.env.local`) with the following keys (see `.env.example`):
+     ```
+     VITE_FIREBASE_API_KEY=...
+     VITE_FIREBASE_AUTH_DOMAIN=...
+     VITE_FIREBASE_PROJECT_ID=...
+     VITE_FIREBASE_STORAGE_BUCKET=...
+     VITE_FIREBASE_MESSAGING_SENDER_ID=...
+     VITE_FIREBASE_APP_ID=...
+     ```
+   - **Initial Data:** You will need to manually create users in Firebase Authentication and corresponding user documents in the `users` Firestore collection to match the application roles (see `types.ts` for the `User` interface).
+4. Run the app:
    `npm run dev`

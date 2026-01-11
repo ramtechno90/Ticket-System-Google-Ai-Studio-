@@ -8,7 +8,7 @@ import {
   ArrowRight,
   Activity
 } from 'lucide-react';
-import { firebase } from '../services/mockFirebase';
+import { firebase } from '../services/firebaseService';
 import { Ticket, User, UserRole, TicketStatus } from '../types';
 import { STATUS_COLORS } from '../constants';
 
