@@ -19,7 +19,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import TicketView from './pages/TicketView';
 import NewTicket from './pages/NewTicket';
-import { firebase } from './services/mockFirebase';
+import { firebase } from './services/firebaseService';
 import { User as UserType, UserRole, Notification } from './types';
 
 // Fix: Interface for NotificationItem props to allow void or Promise<void> for onDelete

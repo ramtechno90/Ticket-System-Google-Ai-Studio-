@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Package2, Lock, Mail, ArrowRight } from 'lucide-react';
-import { firebase } from '../services/mockFirebase';
+import { firebase } from '../services/firebaseService';
 import { User } from '../types';
 
 interface LoginPageProps {
@@ -10,6 +10,7 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('client@apple.com');
+  const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,9 +19,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setLoading(true);
     setError('');
     try {
-      const user = await firebase.login(email);
+      const user = await firebase.login(email, password);
       if (user) onLogin(user);
     } catch (err) {
+      console.error(err);
       setError('Invalid credentials or user not found');
     } finally {
       setLoading(false);
@@ -59,9 +61,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
                 type="password"
+                required
                 className="appearance-none rounded-none relative block w-full px-12 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
-                defaultValue="password123"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
           </div>

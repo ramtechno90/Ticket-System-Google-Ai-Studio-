@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package2, Send, AlertCircle, Upload } from 'lucide-react';
-import { firebase } from '../services/mockFirebase';
+import { firebase } from '../services/firebaseService';
 import { User, TicketCategory } from '../types';
 
 const NewTicket = ({ user }: { user: User }) => {
