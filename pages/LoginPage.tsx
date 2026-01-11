@@ -95,13 +95,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button 
-              onClick={() => setEmail('client@apple.com')}
+              onClick={() => { setEmail('client@apple.com'); setPassword('password123'); }}
               className="text-xs text-gray-600 bg-gray-50 border border-gray-200 p-2 rounded hover:bg-gray-100"
             >
               Client (Apple)
             </button>
             <button 
-              onClick={() => setEmail('agent@factory.com')}
+              onClick={() => { setEmail('agent@factory.com'); setPassword('password123'); }}
               className="text-xs text-gray-600 bg-gray-50 border border-gray-200 p-2 rounded hover:bg-gray-100"
             >
               Staff Agent
