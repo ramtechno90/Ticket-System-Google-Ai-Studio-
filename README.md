@@ -15,8 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1SQErHJYbBlgS3_CNL7qMTW
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. **Firebase Setup:**
+2. **Firebase Setup:**
    - Create a project in the [Firebase Console](https://console.firebase.google.com/).
    - Enable **Authentication** and set up the **Email/Password** sign-in method.
    - Create a **Cloud Firestore** database.
@@ -31,5 +30,28 @@ View your app in AI Studio: https://ai.studio/apps/drive/1SQErHJYbBlgS3_CNL7qMTW
      VITE_FIREBASE_APP_ID=...
      ```
    - **Initial Data:** You will need to manually create users in Firebase Authentication and corresponding user documents in the `users` Firestore collection to match the application roles (see `types.ts` for the `User` interface).
-4. Run the app:
+
+### Demo Accounts Setup
+
+To make the "Demo Accounts" buttons on the login page work, verify you have created the following users in your Firebase project.
+
+1.  **Create Users in Authentication:**
+    *   **Email:** `client@apple.com`, **Password:** `password123`
+    *   **Email:** `agent@factory.com`, **Password:** `password123`
+
+2.  **Create User Profiles in Firestore:**
+    *   Collection: `users`
+    *   **Document ID:** `[UID of client@apple.com]`
+        *   `email`: "client@apple.com"
+        *   `name`: "John Doe"
+        *   `role`: "client_user"
+        *   `clientId`: "client_apple"
+        *   `clientName`: "Apple Inc."
+    *   **Document ID:** `[UID of agent@factory.com]`
+        *   `email`: "agent@factory.com"
+        *   `name`: "Jane Support"
+        *   `role`: "support_agent"
+        *   `clientId`: "manufacturer"
+
+3. Run the app:
    `npm run dev`
