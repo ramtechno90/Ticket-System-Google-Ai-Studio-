@@ -1,0 +1,7 @@
+{
+  "name": "ForgeTrack B2B Ticketing",
+  "description": "A secure, enterprise-grade ticketing portal for manufacturing companies to manage client support, quality issues, and logistics with SLA tracking and AI-powered insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
