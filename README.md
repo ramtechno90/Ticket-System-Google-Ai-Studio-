@@ -65,4 +65,14 @@ To secure your data, you must apply the security rules.
 3.  Copy the contents of `firestore.rules` (the top part starting with `service cloud.firestore`) and paste it into the editor.
 4.  Click **Publish**.
 
-*Note: The `firestore.rules` file also contains Storage rules at the bottom if you decide to implement file uploads later.*
+### Firestore Indexes
+
+You may encounter an error like `The query requires an index`. This is normal for Firestore when performing compound queries (e.g., filtering by user and sorting by time).
+
+1.  **Automatic Creation:** Open the browser developer console when the error occurs. Firebase provides a direct link in the error message. Click it to create the required index automatically in the Firebase Console.
+2.  **Manual Creation:** You can check `firestore.indexes.json` for the list of required indexes.
+    *   `notifications`: `userId` (ASC) + `timestamp` (DESC)
+    *   `tickets`: `clientId` (ASC) + `updatedAt` (DESC)
+    *   `comments`: `ticketId` (ASC) + `timestamp` (ASC)
+
+*Note: The `firestore.rules` file defines access policies. `storage.rules` defines file upload policies.*

@@ -68,15 +68,19 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   
   const toggleNotif = async () => {
-    if (!isNotifOpen) {
-      const data = await firebase.getNotifications();
-      setNotifications(data);
-    } else {
-      await firebase.markNotificationsRead();
-      const data = await firebase.getNotifications();
-      setNotifications(data);
+    try {
+      if (!isNotifOpen) {
+        const data = await firebase.getNotifications();
+        setNotifications(data);
+      } else {
+        await firebase.markNotificationsRead();
+        const data = await firebase.getNotifications();
+        setNotifications(data);
+      }
+      setIsNotifOpen(!isNotifOpen);
+    } catch (error) {
+      console.error("Failed to load notifications", error);
     }
-    setIsNotifOpen(!isNotifOpen);
   };
 
   useEffect(() => {
@@ -97,8 +101,12 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
 
   useEffect(() => {
     const load = async () => {
-      const data = await firebase.getNotifications();
-      setNotifications(data);
+      try {
+        const data = await firebase.getNotifications();
+        setNotifications(data);
+      } catch (error) {
+        console.error("Failed to fetch notifications (check indexes?)", error);
+      }
     };
     load();
     const interval = setInterval(load, 5000);
