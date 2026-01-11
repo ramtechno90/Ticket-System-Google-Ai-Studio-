@@ -1,11 +1,12 @@
 
-import { auth, db } from './firebaseConfig';
+import { auth, db, storage } from './firebaseConfig';
 import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   collection,
   getDocs,
@@ -170,7 +171,7 @@ class FirebaseService {
       status: TicketStatus.NEW,
       subject: data.subject || '',
       description: data.description || '',
-      attachments: [],
+      attachments: data.attachments || [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -347,6 +348,12 @@ class FirebaseService {
 
      const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
      await Promise.all(deletePromises);
+  }
+
+  async uploadFile(file: File): Promise<string> {
+    const storageRef = ref(storage, `attachments/${Date.now()}_${file.name}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snapshot.ref);
   }
 }
 

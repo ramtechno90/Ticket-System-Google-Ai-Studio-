@@ -28,7 +28,8 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow write: if isSignedIn() && resource.data.userId == request.auth.uid; // Allow users to mark read/delete
+      allow create: if isSignedIn(); // Allow anyone to create notifications (e.g. sender creating for recipient)
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid; // Only recipient can modify/delete
     }
   }
 }
