@@ -58,6 +58,7 @@ export interface Comment {
   text: string;
   timestamp: number;
   isSystemMessage?: boolean;
+  clientId?: string;
 }
 
 export interface Client {

@@ -32,12 +32,11 @@ const Dashboard = ({ user }: { user: User }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      const data = await firebase.getTickets();
+    const unsubscribe = firebase.subscribeToTickets((data) => {
       setTickets(data);
       setLoading(false);
-    };
-    load();
+    });
+    return () => unsubscribe();
   }, [user]);
 
   const filteredTickets = tickets.filter(t => {

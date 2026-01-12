@@ -13,12 +13,14 @@ import {
   doc,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
   where,
   orderBy,
-  limit
+  limit,
+  onSnapshot
 } from 'firebase/firestore';
 import { User, Ticket, Comment, Notification, TicketStatus, UserRole, TicketCategory } from '../types';
 
@@ -140,6 +142,33 @@ class FirebaseService {
     return tickets;
   }
 
+  subscribeToTickets(callback: (tickets: Ticket[]) => void): () => void {
+    const user = this.getCurrentUser();
+    if (!user) {
+        callback([]);
+        return () => {};
+    }
+
+    const ticketsRef = collection(db, 'tickets');
+    let q;
+
+    if (user.role === UserRole.CLIENT_USER) {
+      q = query(ticketsRef, where('clientId', '==', user.clientId), orderBy('updatedAt', 'desc'));
+    } else {
+      q = query(ticketsRef, orderBy('updatedAt', 'desc'));
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const tickets: Ticket[] = [];
+      snapshot.forEach((doc) => {
+        tickets.push(doc.data() as Ticket);
+      });
+      callback(tickets);
+    }, (error) => {
+        console.error("Error subscribing to tickets:", error);
+    });
+  }
+
   async getTicketById(id: string): Promise<Ticket | undefined> {
     const user = this.getCurrentUser();
     if (!user) return undefined;
@@ -182,13 +211,8 @@ class FirebaseService {
     };
 
     // Use ticketId as doc ID or let Firestore generate one?
-    // Let's use ticketId as doc ID for easy reference if possible.
-    // But `addDoc` auto-generates. `setDoc` allows specifying.
-    // Let's stick to `addDoc` but store `id` field.
-
-    const ticketsRef = collection(db, 'tickets');
-    // Using setDoc with specific ID would be cleaner but let's just query by ID field as implemented in getTicketById
-    await addDoc(ticketsRef, newTicket);
+    // Using setDoc with specific ID to match the logical ID, which helps with security rules using get().
+    await setDoc(doc(db, 'tickets', ticketId), newTicket);
 
     // Add initial system comment
     await this.addComment(newTicket.id, 'Ticket created.', true);
@@ -233,9 +257,19 @@ class FirebaseService {
   }
 
   async getComments(ticketId: string): Promise<Comment[]> {
+    const user = this.getCurrentUser();
     // Assuming comments are in a top-level collection 'comments' for now, linked by ticketId
     const commentsRef = collection(db, 'comments');
-    const q = query(commentsRef, where('ticketId', '==', ticketId), orderBy('timestamp', 'asc'));
+    let q;
+
+    // For Client Users, we must filter by clientId if available to satisfy security rules,
+    // OR we rely on the rule checking the ticket via get().
+    // Since we updated rules to allow check by clientId, adding the filter is safer and more efficient.
+    if (user && user.role === UserRole.CLIENT_USER) {
+        q = query(commentsRef, where('ticketId', '==', ticketId), where('clientId', '==', user.clientId), orderBy('timestamp', 'asc'));
+    } else {
+        q = query(commentsRef, where('ticketId', '==', ticketId), orderBy('timestamp', 'asc'));
+    }
 
     const querySnapshot = await getDocs(q);
     const comments: Comment[] = [];
@@ -269,6 +303,9 @@ class FirebaseService {
         }
     }
 
+    // Fetch the ticket to get clientId and owner info for notifications
+    const ticket = await this.getTicketById(ticketId);
+
     const newComment: Comment = {
       id: `C-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ticketId,
@@ -277,15 +314,14 @@ class FirebaseService {
       userRole: commenterRole,
       text,
       timestamp: Date.now(),
-      isSystemMessage: isSystem
+      isSystemMessage: isSystem,
+      clientId: ticket?.clientId // Denormalize clientId for security rules
     };
 
     const commentsRef = collection(db, 'comments');
     await addDoc(commentsRef, newComment);
 
     // Notification Logic
-    // We need to fetch the ticket to know who to notify (the ticket creator/owner)
-    const ticket = await this.getTicketById(ticketId);
     if (ticket) {
         const manufacturerRoles = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN];
         // If current user is manufacturer or system, notify the client user

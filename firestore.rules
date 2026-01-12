@@ -39,7 +39,7 @@ service cloud.firestore {
     }
 
     match /comments/{commentId} {
-      allow read: if isSignedIn() && (isManufacturer() || get(/databases/$(database)/documents/tickets/$(resource.data.ticketId)).data.clientId == getUserClientId());
+      allow read: if isSignedIn() && (isManufacturer() || resource.data.clientId == getUserClientId() || get(/databases/$(database)/documents/tickets/$(resource.data.ticketId)).data.clientId == getUserClientId());
       allow create: if isSignedIn();
     }
 
