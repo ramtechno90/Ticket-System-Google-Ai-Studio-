@@ -26,12 +26,12 @@ const CreateUser = () => {
 
     // Using a temporary app instance to create user without logging out the current admin
     const tempApp = initializeApp({
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID
     }, 'tempApp');
 
     const tempAuth = getAuth(tempApp);
@@ -67,9 +67,9 @@ const CreateUser = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-4">
-        <button onClick={() => navigate('/')} className="flex items-center text-gray-600 mb-6 hover:text-blue-600">
-            <ArrowLeft className="w-5 h-5 mr-2" /> Back to Dashboard
-        </button>
+      <button onClick={() => navigate('/')} className="flex items-center text-gray-600 mb-6 hover:text-blue-600">
+        <ArrowLeft className="w-5 h-5 mr-2" /> Back to Dashboard
+      </button>
       <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
         <div className="bg-emerald-600 p-8 text-white">
           <div className="flex items-center space-x-3 mb-2">
@@ -84,26 +84,26 @@ const CreateUser = () => {
         <form onSubmit={handleCreateUser} className="p-8 space-y-6">
           <div className="grid grid-cols-2 gap-6">
             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
-                <input
+              <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+              <input
                 type="text"
                 required
-                className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
+                className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
             </div>
             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Role</label>
-                <select
-                className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
+              <label className="block text-sm font-bold text-gray-700 mb-2">Role</label>
+              <select
+                className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
                 value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
-                >
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              >
                 <option value={UserRole.CLIENT_USER}>Client User</option>
                 <option value={UserRole.SUPPORT_AGENT}>Support Agent</option>
                 <option value={UserRole.SUPERVISOR}>Supervisor</option>
-                </select>
+              </select>
             </div>
           </div>
 
@@ -112,9 +112,9 @@ const CreateUser = () => {
             <input
               type="email"
               required
-              className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
+              className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
 
@@ -123,37 +123,37 @@ const CreateUser = () => {
             <input
               type="password"
               required
-              className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
+              className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
               value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
           </div>
 
           {formData.role === UserRole.CLIENT_USER && (
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
-                <h3 className="font-bold text-gray-700 text-sm">Client Organization Details</h3>
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Client ID (Internal Code)</label>
-                    <input
-                        type="text"
-                        required={formData.role === UserRole.CLIENT_USER}
-                        placeholder="e.g. client_tesla"
-                        className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
-                        value={formData.clientId}
-                        onChange={(e) => setFormData({...formData, clientId: e.target.value})}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Display Name</label>
-                    <input
-                        type="text"
-                        required={formData.role === UserRole.CLIENT_USER}
-                        placeholder="e.g. Tesla Motors"
-                        className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5"
-                        value={formData.clientName}
-                        onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                    />
-                </div>
+              <h3 className="font-bold text-gray-700 text-sm">Client Organization Details</h3>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Client ID (Internal Code)</label>
+                <input
+                  type="text"
+                  required={formData.role === UserRole.CLIENT_USER}
+                  placeholder="e.g. client_tesla"
+                  className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
+                  value={formData.clientId}
+                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Display Name</label>
+                <input
+                  type="text"
+                  required={formData.role === UserRole.CLIENT_USER}
+                  placeholder="e.g. Tesla Motors"
+                  className="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm py-2.5 px-4"
+                  value={formData.clientName}
+                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                />
+              </div>
             </div>
           )}
 

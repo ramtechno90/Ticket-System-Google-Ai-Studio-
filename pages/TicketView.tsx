@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Send, 
-  Clock, 
-  User as UserIcon, 
+import {
+  ArrowLeft,
+  Send,
+  Clock,
+  User as UserIcon,
   Paperclip,
   Info,
   PlusCircle,
@@ -107,22 +107,13 @@ const TicketView = ({ user }: { user: User }) => {
               <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{ticket.subject}</h1>
             </div>
           </div>
-          
-          {/* Demo Action Button for Clients to test Notifications */}
-          {!isManufacturer && (
-            <button 
-              onClick={simulateReply}
-              className="hidden sm:flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all group"
-            >
-              <Zap className="w-3 h-3 mr-1.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-              Demo: Simulate Reply
-            </button>
-          )}
+
+
         </div>
 
         {/* Ticket Header Metadata (Mobile Only) */}
         <div className="lg:hidden flex flex-wrap gap-2 mb-4">
-           <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border ${STATUS_COLORS[ticket.status]}`}>
+          <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border ${STATUS_COLORS[ticket.status]}`}>
             {ticket.status}
           </span>
           <span className="bg-white border border-gray-200 px-2.5 py-1 rounded-lg text-[10px] font-bold text-gray-600 flex items-center">
@@ -161,7 +152,7 @@ const TicketView = ({ user }: { user: User }) => {
                   className="flex items-center space-x-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors"
                 >
                   <Paperclip className="w-3 h-3" />
-                  <span>Attachment {i+1}</span>
+                  <span>Attachment {i + 1}</span>
                 </a>
               ))}
             </div>
@@ -176,15 +167,14 @@ const TicketView = ({ user }: { user: User }) => {
           </h3>
           <div className="space-y-4">
             {comments.map((comment) => (
-              <div 
-                key={comment.id} 
-                className={`p-4 rounded-xl border ${
-                  comment.isSystemMessage 
-                    ? 'bg-gray-50 border-gray-100 italic text-center text-gray-500 text-[10px] md:text-xs' 
-                    : comment.userRole === UserRole.CLIENT_USER 
-                      ? 'bg-white border-gray-200 mr-4 md:mr-12 shadow-sm' 
-                      : 'bg-blue-50 border-blue-100 ml-4 md:ml-12 shadow-sm'
-                }`}
+              <div
+                key={comment.id}
+                className={`p-4 rounded-xl border ${comment.isSystemMessage
+                  ? 'bg-gray-50 border-gray-100 italic text-center text-gray-500 text-[10px] md:text-xs'
+                  : comment.userRole === UserRole.CLIENT_USER
+                    ? 'bg-white border-gray-200 mr-4 md:mr-12 shadow-sm'
+                    : 'bg-blue-50 border-blue-100 ml-4 md:ml-12 shadow-sm'
+                  }`}
               >
                 {!comment.isSystemMessage && (
                   <div className="flex justify-between items-center mb-1.5">
@@ -201,7 +191,7 @@ const TicketView = ({ user }: { user: User }) => {
           {showCommentForm ? (
             <form onSubmit={handlePostComment} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-6">
               <textarea
-                className="w-full border-none focus:ring-0 text-sm placeholder-gray-400 resize-none"
+                className="w-full border-none focus:ring-0 text-sm placeholder-gray-400 resize-none px-4 py-4"
                 placeholder="Write your reply to the manufacturer..."
                 rows={3}
                 value={newComment}
@@ -211,8 +201,8 @@ const TicketView = ({ user }: { user: User }) => {
                 <button type="button" className="p-2 text-gray-400 hover:text-blue-500 transition-colors">
                   <Paperclip className="w-5 h-5" />
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={!newComment.trim()}
                   className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center shadow-sm transition-all active:scale-95"
                 >
@@ -273,7 +263,7 @@ const TicketView = ({ user }: { user: User }) => {
               </div>
             ) : (
               ticket.status !== TicketStatus.CLOSED && (
-                <button 
+                <button
                   onClick={() => handleStatusChange(TicketStatus.CLOSED)}
                   className="w-full py-2.5 px-4 text-xs font-bold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center"
                 >

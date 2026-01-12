@@ -137,7 +137,13 @@ class FirebaseService {
     const querySnapshot = await getDocs(q);
     const tickets: Ticket[] = [];
     querySnapshot.forEach((doc) => {
-      tickets.push(doc.data() as Ticket);
+      const t = doc.data() as Ticket;
+      // Soft Delete Filter
+      if (user.role === UserRole.CLIENT_USER) {
+        if (!t.deletedByClient) tickets.push(t);
+      } else {
+        if (!t.deletedByStaff) tickets.push(t);
+      }
     });
     return tickets;
   }
@@ -145,8 +151,8 @@ class FirebaseService {
   subscribeToTickets(callback: (tickets: Ticket[]) => void): () => void {
     const user = this.getCurrentUser();
     if (!user) {
-        callback([]);
-        return () => {};
+      callback([]);
+      return () => { };
     }
 
     const ticketsRef = collection(db, 'tickets');
@@ -161,11 +167,17 @@ class FirebaseService {
     return onSnapshot(q, (snapshot) => {
       const tickets: Ticket[] = [];
       snapshot.forEach((doc) => {
-        tickets.push(doc.data() as Ticket);
+        const t = doc.data() as Ticket;
+        // Soft Delete Filter
+        if (user.role === UserRole.CLIENT_USER) {
+          if (!t.deletedByClient) tickets.push(t);
+        } else {
+          if (!t.deletedByStaff) tickets.push(t);
+        }
       });
       callback(tickets);
     }, (error) => {
-        console.error("Error subscribing to tickets:", error);
+      console.error("Error subscribing to tickets:", error);
     });
   }
 
@@ -256,6 +268,24 @@ class FirebaseService {
     await this.addComment(ticketId, `Status updated to ${newStatus}`, true);
   }
 
+  async deleteTicket(ticketId: string): Promise<void> {
+    const user = this.getCurrentUser();
+    if (!user) return;
+
+    // We only perform a soft delete based on user role
+    const updates: any = {};
+    if (user.role === UserRole.CLIENT_USER) {
+      updates.deletedByClient = true;
+    } else {
+      updates.deletedByStaff = true;
+    }
+
+    // Need to find the doc first because we store logical ID in 'id' field, but verify if doc ID matches
+    // Based on createTicket, we use setDoc(doc(db, 'tickets', ticketId), ...) so doc ID == ticketId
+    const docRef = doc(db, 'tickets', ticketId);
+    await updateDoc(docRef, updates);
+  }
+
   async getComments(ticketId: string): Promise<Comment[]> {
     const user = this.getCurrentUser();
     // Assuming comments are in a top-level collection 'comments' for now, linked by ticketId
@@ -266,9 +296,9 @@ class FirebaseService {
     // OR we rely on the rule checking the ticket via get().
     // Since we updated rules to allow check by clientId, adding the filter is safer and more efficient.
     if (user && user.role === UserRole.CLIENT_USER) {
-        q = query(commentsRef, where('ticketId', '==', ticketId), where('clientId', '==', user.clientId), orderBy('timestamp', 'asc'));
+      q = query(commentsRef, where('ticketId', '==', ticketId), where('clientId', '==', user.clientId), orderBy('timestamp', 'asc'));
     } else {
-        q = query(commentsRef, where('ticketId', '==', ticketId), orderBy('timestamp', 'asc'));
+      q = query(commentsRef, where('ticketId', '==', ticketId), orderBy('timestamp', 'asc'));
     }
 
     const querySnapshot = await getDocs(q);
@@ -290,17 +320,17 @@ class FirebaseService {
     let commenterRole = UserRole.ADMIN;
 
     if (!isSystem && user) {
-        commenterName = user.name;
-        commenterRole = user.role;
+      commenterName = user.name;
+      commenterRole = user.role;
     } else if (overrideUserId) {
-        // Fetch overridden user details if needed, but for simplicity assuming we don't need deep fetch here
-        // In original mock, it searched MOCK_USERS.
-        // We will just use placeholders or need a user cache.
-        // For simulated staff reply, we need a name.
-        if (overrideUserId === 'user_2') {
-             commenterName = 'Jane Support';
-             commenterRole = UserRole.SUPPORT_AGENT;
-        }
+      // Fetch overridden user details if needed, but for simplicity assuming we don't need deep fetch here
+      // In original mock, it searched MOCK_USERS.
+      // We will just use placeholders or need a user cache.
+      // For simulated staff reply, we need a name.
+      if (overrideUserId === 'user_2') {
+        commenterName = 'Jane Support';
+        commenterRole = UserRole.SUPPORT_AGENT;
+      }
     }
 
     // Fetch the ticket to get clientId and owner info for notifications
@@ -323,25 +353,25 @@ class FirebaseService {
 
     // Notification Logic
     if (ticket) {
-        const manufacturerRoles = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN];
-        // If current user is manufacturer or system, notify the client user
-        // OR if it's an override (simulated staff)
+      const manufacturerRoles = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN];
+      // If current user is manufacturer or system, notify the client user
+      // OR if it's an override (simulated staff)
 
-        const isManufacturerAction = isSystem || manufacturerRoles.includes(commenterRole);
+      const isManufacturerAction = isSystem || manufacturerRoles.includes(commenterRole);
 
-        if (isManufacturerAction) {
-             const notificationsRef = collection(db, 'notifications');
-             const notification: Notification = {
-                id: `N-${Date.now()}`,
-                userId: ticket.userId, // Notify ticket owner
-                ticketId: ticket.id,
-                text: isSystem ? `System: ${text} for ${ticket.id}` : `${commenterName} messaged about ${ticket.id}`,
-                timestamp: Date.now(),
-                read: false,
-                type: isSystem ? 'STATUS' : 'COMMENT'
-             };
-             await addDoc(notificationsRef, notification);
-        }
+      if (isManufacturerAction) {
+        const notificationsRef = collection(db, 'notifications');
+        const notification: Notification = {
+          id: `N-${Date.now()}`,
+          userId: ticket.userId, // Notify ticket owner
+          ticketId: ticket.id,
+          text: isSystem ? `System: ${text} for ${ticket.id}` : `${commenterName} messaged about ${ticket.id}`,
+          timestamp: Date.now(),
+          read: false,
+          type: isSystem ? 'STATUS' : 'COMMENT'
+        };
+        await addDoc(notificationsRef, notification);
+      }
     }
 
     return newComment;
@@ -376,21 +406,47 @@ class FirebaseService {
     const querySnapshot = await getDocs(q);
 
     const batchPromises = querySnapshot.docs.map(docSnap =>
-        updateDoc(docSnap.ref, { read: true })
+      updateDoc(docSnap.ref, { read: true })
     );
 
     await Promise.all(batchPromises);
   }
 
   async deleteNotification(id: string): Promise<void> {
-     const notificationsRef = collection(db, 'notifications');
-     const q = query(notificationsRef, where('id', '==', id));
-     const querySnapshot = await getDocs(q);
+    const user = this.getCurrentUser();
+    if (!user) {
+      console.error("No user logged in, cannot delete notification");
+      return;
+    }
 
-     const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-     await Promise.all(deletePromises);
+    try {
+      console.log(`Attempting to delete notification with ID field: ${id}`);
+
+      const notificationsRef = collection(db, 'notifications');
+      // Fix: Query must filter by userId to match Firestore Security Rule
+      // Rule: allow read: if resource.data.userId == request.auth.uid
+      const q = query(
+        notificationsRef,
+        where('id', '==', id),
+        where('userId', '==', user.uid)
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        console.log(`No notification found (id: ${id}, userId: ${user.uid})`);
+        return;
+      }
+
+      const deletePromises = querySnapshot.docs.map(docSnap => {
+        return deleteDoc(docSnap.ref);
+      });
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error("Error in deleteNotification service:", err);
+      throw err;
+    }
   }
-
   async uploadFile(file: File): Promise<string> {
     const storageRef = ref(storage, `attachments/${Date.now()}_${file.name}`);
     const snapshot = await uploadBytes(storageRef, file);

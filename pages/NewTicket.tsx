@@ -61,7 +61,7 @@ const NewTicket = ({ user }: { user: User }) => {
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
             <select 
-              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5"
+              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5 px-4"
               value={formData.category}
               onChange={(e) => setFormData({...formData, category: e.target.value as TicketCategory})}
             >
@@ -74,7 +74,7 @@ const NewTicket = ({ user }: { user: User }) => {
             <input
               type="text"
               required
-              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5"
+              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5 px-4"
               placeholder="e.g., Damaged items in Shipment #592"
               value={formData.subject}
               onChange={(e) => setFormData({...formData, subject: e.target.value})}
@@ -86,7 +86,7 @@ const NewTicket = ({ user }: { user: User }) => {
             <textarea
               required
               rows={5}
-              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5"
+              className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm py-2.5 px-4"
               placeholder="Please provide as much detail as possible, including batch numbers, order dates, and symptoms..."
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}

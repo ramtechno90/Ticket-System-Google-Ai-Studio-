@@ -34,7 +34,12 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isManufacturer() || resource.data.clientId == getUserClientId());
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (
-        isManufacturer() || (resource.data.clientId == getUserClientId() && request.resource.data.status == 'Closed')
+        isManufacturer() || (
+          resource.data.clientId == getUserClientId() && (
+            request.resource.data.status == 'Closed' || 
+            request.resource.data.deletedByClient == true
+          )
+        )
       );
     }
 
@@ -46,7 +51,7 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn(); // Allow anyone to create notifications (e.g. sender creating for recipient)
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid; // Only recipient can modify/delete
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isManufacturer());
     }
   }
 }

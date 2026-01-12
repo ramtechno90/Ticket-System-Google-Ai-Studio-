@@ -47,6 +47,8 @@ export interface Ticket {
   updatedAt: number;
   resolvedAt?: number;
   closedAt?: number;
+  deletedByClient?: boolean;
+  deletedByStaff?: boolean;
 }
 
 export interface Comment {

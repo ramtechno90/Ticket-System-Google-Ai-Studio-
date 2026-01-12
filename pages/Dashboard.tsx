@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Search, 
-  Filter, 
-  CheckCircle2, 
+import {
+  Search,
+  Filter,
+  CheckCircle2,
   ArrowRight,
   Activity,
-  UserPlus
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { firebase } from '../services/firebaseService';
 import { Ticket, User, UserRole, TicketStatus } from '../types';
 import { STATUS_COLORS } from '../constants';
+
 
 const StatsCard = ({ title, value, icon: Icon, color }: any) => (
   <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-200 shadow-sm flex items-center transition-all hover:translate-y-[-2px] hover:shadow-md">
@@ -25,7 +27,7 @@ const StatsCard = ({ title, value, icon: Icon, color }: any) => (
   </div>
 );
 
-const Dashboard = ({ user }: { user: User }) => {
+const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: boolean }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All Statuses');
@@ -40,11 +42,40 @@ const Dashboard = ({ user }: { user: User }) => {
   }, [user]);
 
   const filteredTickets = tickets.filter(t => {
-    const matchesSearch = t.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          t.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All Statuses' || t.status === filterStatus;
+    const matchesSearch = t.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.id.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Status Filter Logic based on view mode (active vs resolved)
+    let matchesStatus = false;
+
+    if (showResolved) {
+      // In Resolved View: Only show RESOLVED or CLOSED
+      // And allow further filtering if dropdown is used (though filtering "All Statuses" in this view implies all resolved types)
+      if (filterStatus === 'All Statuses') {
+        matchesStatus = t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED;
+      } else {
+        matchesStatus = t.status === filterStatus;
+      }
+    } else {
+      // In Active View: Show everything EXCEPT RESOLVED and CLOSED
+      if (filterStatus === 'All Statuses') {
+        matchesStatus = t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED;
+      } else {
+        matchesStatus = t.status === filterStatus &&
+          (t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED);
+      }
+    }
+
     return matchesSearch && matchesStatus;
   });
+
+  // Soft Delete Handler
+  const handleDeleteTicket = async (e: React.MouseEvent, ticketId: string) => {
+    e.preventDefault(); // Prevent navigation
+    if (window.confirm('Are you sure you want to delete this ticket from your history?')) {
+      await firebase.deleteTicket(ticketId);
+    }
+  };
 
   const stats = {
     open: tickets.filter(t => t.status !== TicketStatus.CLOSED && t.status !== TicketStatus.RESOLVED).length,
@@ -57,10 +88,14 @@ const Dashboard = ({ user }: { user: User }) => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h2 className="text-xl md:text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-            {user.role === UserRole.CLIENT_USER ? `${user.clientName} Dashboard` : 'Manufacturer Support Center'}
+            {showResolved
+              ? 'Resolved History'
+              : (user.role === UserRole.CLIENT_USER ? `${user.clientName} Dashboard` : 'Manufacturer Support Center')}
           </h2>
           <p className="mt-1 text-xs md:text-sm text-gray-500">
-            Welcome back, {user.name}. Monitoring {stats.open} active manufacturing issues.
+            {showResolved
+              ? `Archived records of ${stats.resolved} completed issues.`
+              : `Welcome back, ${user.name}. Monitoring ${stats.open} active manufacturing issues.`}
           </p>
         </div>
         <div className="flex-shrink-0 flex gap-2">
@@ -87,8 +122,12 @@ const Dashboard = ({ user }: { user: User }) => {
       <div className="space-y-6 md:space-y-8">
         {/* Stats Grid - Now simplified to 2 columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-          <StatsCard title="Open Tickets" value={stats.open} icon={Activity} color="bg-blue-50 text-blue-600" />
-          <StatsCard title="Resolved Issues" value={stats.resolved} icon={CheckCircle2} color="bg-emerald-50 text-emerald-600" />
+          <Link to="/" className="block">
+            <StatsCard title="Open Tickets" value={stats.open} icon={Activity} color={`bg-blue-50 text-blue-600 ${!showResolved ? 'ring-2 ring-blue-500 ring-offset-2' : 'opacity-60 grayscale'}`} />
+          </Link>
+          <Link to="/resolved" className="block">
+            <StatsCard title="Resolved Issues" value={stats.resolved} icon={CheckCircle2} color={`bg-emerald-50 text-emerald-600 ${showResolved ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} />
+          </Link>
         </div>
 
         {/* Filter Bar */}
@@ -108,13 +147,18 @@ const Dashboard = ({ user }: { user: User }) => {
               <Filter className="w-4 h-4" />
               <span className="hidden md:inline">Filter:</span>
             </div>
-            <select 
+            <select
               className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 bg-white"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option>All Statuses</option>
-              {Object.values(TicketStatus).map(s => <option key={s}>{s}</option>)}
+              {Object.values(TicketStatus)
+                .filter(s => showResolved
+                  ? (s === TicketStatus.RESOLVED || s === TicketStatus.CLOSED)
+                  : (s !== TicketStatus.RESOLVED && s !== TicketStatus.CLOSED)
+                )
+                .map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
         </div>
@@ -163,6 +207,17 @@ const Dashboard = ({ user }: { user: User }) => {
                         <span className="hidden md:inline">View</span>
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                       </Link>
+
+                      {/* Delete Action for Resolved/Closed Tickets */}
+                      {(ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED) && (
+                        <button
+                          onClick={(e) => handleDeleteTicket(e, ticket.id)}
+                          className="ml-4 text-gray-400 hover:text-red-500 transition-colors p-1"
+                          title="Delete from history"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

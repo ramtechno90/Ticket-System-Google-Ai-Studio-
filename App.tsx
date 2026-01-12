@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
-import { 
-  LogOut, 
-  LayoutDashboard, 
-  PlusCircle, 
-  User, 
-  Bell, 
-  Package2, 
-  Menu, 
-  X, 
-  MessageSquare, 
-  Activity, 
+import {
+  LogOut,
+  LayoutDashboard,
+  PlusCircle,
+  User,
+  Bell,
+  Package2,
+  Menu,
+  X,
+  MessageSquare,
+  Activity,
   Trash2,
   ExternalLink
 } from 'lucide-react';
@@ -31,10 +31,10 @@ interface NotificationItemProps {
 }
 
 // Fix: Using React.FC to properly handle standard React props like 'key' in JSX and fix assignment issues
-const NotificationItem: React.FC<NotificationItemProps> = ({ 
-  notification, 
-  onClick, 
-  onDelete 
+const NotificationItem: React.FC<NotificationItemProps> = ({
+  notification,
+  onClick,
+  onDelete
 }) => (
   <div
     className={`w-full group text-left p-4 hover:bg-gray-50 transition-colors border-b border-gray-50 flex items-start space-x-3 cursor-pointer ${!notification.read ? 'bg-blue-50/30' : ''}`}
@@ -47,7 +47,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       <p className="text-xs font-semibold text-gray-800 leading-tight mb-1 break-words">{notification.text}</p>
       <p className="text-[10px] text-gray-400 font-medium">{new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
     </div>
-    <button 
+    <button
       onClick={(e) => onDelete(e, notification.id)}
       className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all flex-shrink-0"
       title="Delete notification"
@@ -66,7 +66,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
   const notifRef = useRef<HTMLDivElement>(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  
+
   const toggleNotif = async () => {
     try {
       if (!isNotifOpen) {
@@ -123,9 +123,17 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
 
   const handleDeleteNotif = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await firebase.deleteNotification(id);
-    const data = await firebase.getNotifications();
-    setNotifications(data);
+    try {
+      await firebase.deleteNotification(id);
+      // Optimization: Manually filter it out first for instant UI feedback
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      // Then sync with server
+      const data = await firebase.getNotifications();
+      setNotifications(data);
+    } catch (err) {
+      console.error("Failed to delete notification UI:", err);
+      alert("Failed to delete notification. See console.");
+    }
   };
 
   return (
@@ -150,10 +158,10 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="relative" ref={notifRef}>
-              <button 
+              <button
                 onClick={toggleNotif}
                 className="p-2 text-gray-400 hover:text-gray-500 relative transition-colors focus:outline-none"
               >
@@ -175,11 +183,11 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
                       notifications.slice(0, 5).map(n => (
-                        <NotificationItem 
-                          key={n.id} 
-                          notification={n} 
-                          onClick={handleNotifClick} 
-                          onDelete={handleDeleteNotif} 
+                        <NotificationItem
+                          key={n.id}
+                          notification={n}
+                          onClick={handleNotifClick}
+                          onDelete={handleDeleteNotif}
                         />
                       ))
                     ) : (
@@ -189,7 +197,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
                     )}
                   </div>
                   <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-                    <button 
+                    <button
                       onClick={() => { setIsNotifOpen(false); setShowAllModal(true); }}
                       className="text-[10px] font-bold text-gray-500 hover:text-blue-600 uppercase tracking-widest transition-colors flex items-center justify-center mx-auto"
                     >
@@ -200,7 +208,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
                 </div>
               )}
             </div>
-            
+
             {/* Desktop User Info */}
             <div className="hidden md:flex items-center px-3 py-1 border border-gray-200 rounded-full bg-gray-50">
               <User className="w-4 h-4 mr-2 text-gray-500" />
@@ -211,7 +219,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
             </div>
 
             {/* Mobile Menu Button */}
-            <button 
+            <button
               onClick={toggleMenu}
               className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
             >
@@ -231,7 +239,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
                 <h2 className="text-lg font-bold text-gray-900">All Notifications</h2>
                 <p className="text-xs text-gray-500 mt-0.5">Stay updated with your manufacturing status.</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowAllModal(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -242,11 +250,11 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
               {notifications.length > 0 ? (
                 <div className="divide-y divide-gray-50">
                   {notifications.map(n => (
-                    <NotificationItem 
-                      key={n.id} 
-                      notification={n} 
-                      onClick={handleNotifClick} 
-                      onDelete={handleDeleteNotif} 
+                    <NotificationItem
+                      key={n.id}
+                      notification={n}
+                      onClick={handleNotifClick}
+                      onDelete={handleDeleteNotif}
                     />
                   ))}
                 </div>
@@ -258,7 +266,7 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
               )}
             </div>
             <div className="p-4 border-t border-gray-50 bg-gray-50 text-right">
-              <button 
+              <button
                 onClick={() => setShowAllModal(false)}
                 className="px-6 py-2 text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors"
               >
@@ -272,8 +280,8 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-b border-gray-200 py-2 px-4 space-y-1 shadow-lg">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             onClick={() => setIsMenuOpen(false)}
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -283,8 +291,8 @@ const Navigation = ({ user, onLogout }: { user: UserType, onLogout: () => void }
             </div>
           </Link>
           {user.role === UserRole.CLIENT_USER && (
-            <Link 
-              to="/new-ticket" 
+            <Link
+              to="/new-ticket"
               onClick={() => setIsMenuOpen(false)}
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
             >
@@ -344,7 +352,8 @@ const App = () => {
         <Navigation user={user} onLogout={handleLogout} />
         <main className="max-w-7xl mx-auto py-4 md:py-6 px-4 sm:px-6 lg:px-8">
           <Routes>
-            <Route path="/" element={<Dashboard user={user} />} />
+            <Route path="/" element={<Dashboard user={user} showResolved={false} />} />
+            <Route path="/resolved" element={<Dashboard user={user} showResolved={true} />} />
             <Route path="/ticket/:id" element={<TicketView user={user} />} />
             <Route path="/new-ticket" element={<NewTicket user={user} />} />
             <Route path="/create-user" element={<CreateUser />} />
