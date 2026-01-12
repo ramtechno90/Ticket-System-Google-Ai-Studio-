@@ -1,12 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Helper functions
     function isSignedIn() { return request.auth != null; }
-    function getUserRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
-    function getUserClientId() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId; }
-    function isManufacturer() { return getUserRole() in ['support_agent', 'supervisor', 'admin']; }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserRole() {
+      return userDocExists() ? getUserDoc().data.role : null;
+    }
+
+    function getUserClientId() {
+      return userDocExists() ? getUserDoc().data.clientId : null;
+    }
+
+    function isManufacturer() {
+      return getUserRole() in ['support_agent', 'supervisor', 'admin'];
+    }
 
     match /users/{userId} {
       allow read: if isSignedIn();

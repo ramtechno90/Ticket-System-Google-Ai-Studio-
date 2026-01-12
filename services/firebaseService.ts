@@ -53,8 +53,10 @@ class FirebaseService {
           localStorage.setItem('forge_user', JSON.stringify(this.currentUser));
         } else {
           // Handle case where auth exists but no profile?
-          // For now, might be acceptable to leave as null or partial
-          console.warn("User authenticated but no profile found in 'users' collection");
+          // Log out locally to prevent zombie state
+          console.warn("User authenticated but no profile found in 'users' collection. Clearing local session.");
+          this.currentUser = null;
+          localStorage.removeItem('forge_user');
         }
       } else {
         this.currentUser = null;
