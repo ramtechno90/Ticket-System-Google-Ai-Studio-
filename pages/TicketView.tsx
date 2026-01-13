@@ -279,8 +279,8 @@ const TicketView = ({ user }: { user: User }) => {
                 )}
 
                 {ticket.status === TicketStatus.HOLD_FOR_INFO && (
-                  <button onClick={() => handleStatusChange(TicketStatus.NEW)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
-                    Reactivate to New
+                  <button onClick={() => handleStatusChange(TicketStatus.ACKNOWLEDGED)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                    Reactivate to Acknowledge
                   </button>
                 )}
 
@@ -293,7 +293,7 @@ const TicketView = ({ user }: { user: User }) => {
             ) : (
               ticket.status === TicketStatus.RESOLVED && (
                 <button
-                  onClick={() => handleStatusChange(TicketStatus.NEW)}
+                  onClick={() => handleStatusChange(TicketStatus.ACKNOWLEDGED)}
                   className="w-full py-2.5 px-4 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center"
                 >
                   <PlusCircle className="w-4 h-4 mr-2" />
