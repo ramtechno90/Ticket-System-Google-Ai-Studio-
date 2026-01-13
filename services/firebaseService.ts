@@ -296,7 +296,7 @@ class FirebaseService {
     const user = this.getCurrentUser()!;
     const isManufacturer = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN].includes(user.role);
 
-    if (newStatus !== TicketStatus.NEW && !isManufacturer) {
+    if (newStatus !== TicketStatus.NEW && newStatus !== TicketStatus.ACKNOWLEDGED && !isManufacturer) {
       throw new Error("Only manufacturer support can update execution states.");
     }
 
