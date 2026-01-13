@@ -8,9 +8,9 @@ export enum UserRole {
 
 export enum TicketStatus {
   NEW = 'New',
-  ACKNOWLEDGED = 'Acknowledged',
-  IN_PROGRESS = 'In Progress',
-  WAITING_FOR_CLIENT = 'Waiting for Client',
+  ACKNOWLEDGED = 'Acknowledge',
+  IN_PROGRESS = 'Progress Work',
+  HOLD_FOR_INFO = 'Hold for Info',
   RESOLVED = 'Resolved',
   CLOSED = 'Closed'
 }

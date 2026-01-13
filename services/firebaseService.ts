@@ -203,6 +203,55 @@ class FirebaseService {
     return undefined;
   }
 
+  subscribeToTicketById(id: string, callback: (ticket: Ticket | null) => void): () => void {
+    const user = this.getCurrentUser();
+    if (!user) {
+      callback(null);
+      return () => { };
+    }
+
+    const ticketsRef = collection(db, 'tickets');
+    let q;
+
+    if (user.role === UserRole.CLIENT_USER) {
+      q = query(ticketsRef, where('id', '==', id), where('clientId', '==', user.clientId), limit(1));
+    } else {
+      q = query(ticketsRef, where('id', '==', id), limit(1));
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        callback(snapshot.docs[0].data() as Ticket);
+      } else {
+        callback(null);
+      }
+    }, (error) => {
+      console.error("Error subscribing to ticket:", error);
+    });
+  }
+
+  subscribeToComments(ticketId: string, callback: (comments: Comment[]) => void): () => void {
+    const user = this.getCurrentUser();
+    const commentsRef = collection(db, 'comments');
+    let q;
+
+    if (user && user.role === UserRole.CLIENT_USER) {
+      q = query(commentsRef, where('ticketId', '==', ticketId), where('clientId', '==', user.clientId), orderBy('timestamp', 'asc'));
+    } else {
+      q = query(commentsRef, where('ticketId', '==', ticketId), orderBy('timestamp', 'asc'));
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const comments: Comment[] = [];
+      snapshot.forEach((doc) => {
+        comments.push(doc.data() as Comment);
+      });
+      callback(comments);
+    }, (error) => {
+      console.error("Error subscribing to comments:", error);
+    });
+  }
+
   async createTicket(data: Partial<Ticket>): Promise<Ticket> {
     const user = this.getCurrentUser()!;
     const ticketId = `T-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -247,11 +296,8 @@ class FirebaseService {
     const user = this.getCurrentUser()!;
     const isManufacturer = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN].includes(user.role);
 
-    if (newStatus === TicketStatus.RESOLVED && !isManufacturer) {
-      throw new Error("Only manufacturer support can resolve tickets.");
-    }
-    if (newStatus === TicketStatus.CLOSED && user.role !== UserRole.CLIENT_USER) {
-      throw new Error("Only clients can close tickets.");
+    if (newStatus !== TicketStatus.NEW && !isManufacturer) {
+      throw new Error("Only manufacturer support can update execution states.");
     }
 
     const updates: any = {

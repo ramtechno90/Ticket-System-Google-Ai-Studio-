@@ -35,9 +35,11 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (
         isManufacturer() || (
-          resource.data.clientId == getUserClientId() && (
-            request.resource.data.status == 'Closed' || 
-            request.resource.data.deletedByClient == true
+          // Allow if user is the ticket owner OR belongs to the same client
+          (resource.data.userId == request.auth.uid || resource.data.clientId == getUserClientId()) && (
+             // Client can only reopen ticket (set to New) or soft delete
+             (request.resource.data.status == 'New' && resource.data.status == 'Resolved') || 
+             (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
           )
         )
       );

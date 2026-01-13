@@ -24,26 +24,28 @@ const TicketView = ({ user }: { user: User }) => {
   const [newComment, setNewComment] = useState('');
   const [error, setError] = useState('');
 
-  const loadData = async () => {
-    if (!id) return;
-    setError('');
-    try {
-      const t = await firebase.getTicketById(id);
-      if (t) {
-        setTicket(t);
-        const c = await firebase.getComments(id);
-        setComments(c);
-      } else {
-        navigate('/');
-      }
-    } catch (err: any) {
-      console.error("Failed to load ticket data", err);
-      setError('Failed to load ticket. Access denied or document missing.');
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    if (!id) return;
+
+    // Subscribe to Ticket
+    const unsubscribeTicket = firebase.subscribeToTicketById(id, (updatedTicket) => {
+      if (updatedTicket) {
+        setTicket(updatedTicket);
+        setError('');
+      } else {
+        setError('Failed to load ticket. Access denied or document missing.');
+      }
+    });
+
+    // Subscribe to Comments
+    const unsubscribeComments = firebase.subscribeToComments(id, (updatedComments) => {
+      setComments(updatedComments);
+    });
+
+    return () => {
+      unsubscribeTicket();
+      unsubscribeComments();
+    };
   }, [id, navigate]);
 
   if (error) {
@@ -65,7 +67,7 @@ const TicketView = ({ user }: { user: User }) => {
     if (!ticket) return;
     try {
       await firebase.updateTicketStatus(ticket.id, status);
-      await loadData();
+      // No need to reload, subscription handles it
     } catch (err: any) {
       alert(err.message);
     }
@@ -77,13 +79,13 @@ const TicketView = ({ user }: { user: User }) => {
 
     await firebase.addComment(ticket.id, newComment);
     setNewComment('');
-    await loadData();
+    // No need to reload, subscription handles it
   };
 
   const simulateReply = async () => {
     if (!ticket) return;
     await firebase.simulateStaffReply(ticket.id);
-    await loadData();
+    // No need to reload, subscription handles it
   };
 
   if (!ticket) return <div className="p-8 text-center">Loading ticket details...</div>;
@@ -248,27 +250,54 @@ const TicketView = ({ user }: { user: User }) => {
             <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Management Actions</p>
             {isManufacturer ? (
               <div className="grid grid-cols-1 gap-2">
-                <button onClick={() => handleStatusChange(TicketStatus.ACKNOWLEDGED)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
-                  Acknowledge
-                </button>
-                <button onClick={() => handleStatusChange(TicketStatus.IN_PROGRESS)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
-                  Progress Work
-                </button>
-                <button onClick={() => handleStatusChange(TicketStatus.WAITING_FOR_CLIENT)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
-                  Hold for Info
-                </button>
-                <button onClick={() => handleStatusChange(TicketStatus.RESOLVED)} className="w-full py-2.5 px-4 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all">
-                  Resolve Ticket
-                </button>
+                {ticket.status === TicketStatus.NEW && (
+                  <>
+                    <button onClick={() => handleStatusChange(TicketStatus.ACKNOWLEDGED)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                      Acknowledge
+                    </button>
+                    <button onClick={() => handleStatusChange(TicketStatus.HOLD_FOR_INFO)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                      Hold for Info
+                    </button>
+                  </>
+                )}
+
+                {ticket.status === TicketStatus.ACKNOWLEDGED && (
+                  <button onClick={() => handleStatusChange(TicketStatus.IN_PROGRESS)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                    Progress Work
+                  </button>
+                )}
+
+                {ticket.status === TicketStatus.IN_PROGRESS && (
+                  <>
+                    <button onClick={() => handleStatusChange(TicketStatus.RESOLVED)} className="w-full py-2.5 px-4 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all">
+                      Resolve Ticket
+                    </button>
+                    <button onClick={() => handleStatusChange(TicketStatus.HOLD_FOR_INFO)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                      Hold for Info
+                    </button>
+                  </>
+                )}
+
+                {ticket.status === TicketStatus.HOLD_FOR_INFO && (
+                  <button onClick={() => handleStatusChange(TicketStatus.NEW)} className="w-full py-2 px-4 text-[11px] font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                    Reactivate to New
+                  </button>
+                )}
+
+                {ticket.status === TicketStatus.RESOLVED && (
+                  <button onClick={() => handleStatusChange(TicketStatus.CLOSED)} className="w-full py-2.5 px-4 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors">
+                    Close Ticket
+                  </button>
+                )}
               </div>
             ) : (
-              ticket.status !== TicketStatus.CLOSED && (
+              ticket.status === TicketStatus.RESOLVED && (
                 <button
-                  onClick={() => handleStatusChange(TicketStatus.CLOSED)}
-                  className="w-full py-2.5 px-4 text-xs font-bold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center"
+                  onClick={() => handleStatusChange(TicketStatus.NEW)}
+                  className="w-full py-2.5 px-4 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center"
                 >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Cancel Ticket
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Reopen Ticket
                 </button>
               )
             )}

@@ -15,14 +15,19 @@ import { Ticket, User, UserRole, TicketStatus } from '../types';
 import { STATUS_COLORS } from '../constants';
 
 
-const StatsCard = ({ title, value, icon: Icon, color }: any) => (
-  <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-200 shadow-sm flex items-center transition-all hover:translate-y-[-2px] hover:shadow-md">
-    <div className={`p-3 rounded-lg ${color} mr-4`}>
-      <Icon className="w-5 h-5 md:w-6 md:h-6" />
-    </div>
-    <div>
-      <p className="text-xs md:text-sm font-medium text-gray-500 uppercase tracking-wider">{title}</p>
-      <p className="text-xl md:text-2xl font-bold text-gray-900">{value}</p>
+const StatsCard = ({ title, value, icon: Icon, color, onClick, isActive }: any) => (
+  <div
+    onClick={onClick}
+    className={`bg-white p-5 md:p-6 rounded-xl border transition-all cursor-pointer hover:translate-y-[-2px] hover:shadow-md ${isActive ? 'ring-2 ring-blue-500 border-blue-500 shadow-md transform translate-y-[-2px]' : 'border-gray-200 shadow-sm'}`}
+  >
+    <div className={`flex items-center`}>
+      <div className={`p-3 rounded-lg ${color} mr-4`}>
+        <Icon className="w-5 h-5 md:w-6 md:h-6" />
+      </div>
+      <div>
+        <p className="text-xs md:text-sm font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-xl md:text-2xl font-bold text-gray-900">{value}</p>
+      </div>
     </div>
   </div>
 );
@@ -32,6 +37,16 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All Statuses');
   const [loading, setLoading] = useState(true);
+
+  // Helper to handle filter click
+  const handleFilterClick = (status: string) => {
+    // If clicking active filter, clear it (reset to All Statuses)
+    if (filterStatus === status) {
+      setFilterStatus('All Statuses');
+    } else {
+      setFilterStatus(status);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = firebase.subscribeToTickets((data) => {
@@ -45,24 +60,30 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
     const matchesSearch = t.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Status Filter Logic based on view mode (active vs resolved)
+    // Status Filter Logic
     let matchesStatus = false;
 
     if (showResolved) {
       // In Resolved View: Only show RESOLVED or CLOSED
-      // And allow further filtering if dropdown is used (though filtering "All Statuses" in this view implies all resolved types)
       if (filterStatus === 'All Statuses') {
         matchesStatus = t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED;
       } else {
         matchesStatus = t.status === filterStatus;
       }
     } else {
-      // In Active View: Show everything EXCEPT RESOLVED and CLOSED
-      if (filterStatus === 'All Statuses') {
-        matchesStatus = t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED;
+      // In Active View
+      if (user.role !== UserRole.CLIENT_USER && filterStatus !== 'All Statuses') {
+        // Staff filter override: Show tickets matching filter regardless of Resolved/Closed state
+        matchesStatus = t.status === filterStatus;
       } else {
-        matchesStatus = t.status === filterStatus &&
-          (t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED);
+        // Default Logic (Clients or No Filter): Show ONLY Active tickets
+        const isActive = t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED;
+
+        if (filterStatus === 'All Statuses') {
+          matchesStatus = isActive;
+        } else {
+          matchesStatus = isActive && t.status === filterStatus;
+        }
       }
     }
 
@@ -120,17 +141,74 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
       </div>
 
       <div className="space-y-6 md:space-y-8">
-        {/* Stats Grid - Now simplified to 2 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-          <Link to="/" className="block">
-            <StatsCard title="Open Tickets" value={stats.open} icon={Activity} color={`bg-blue-50 text-blue-600 ${!showResolved ? 'ring-2 ring-blue-500 ring-offset-2' : 'opacity-60 grayscale'}`} />
-          </Link>
-          <Link to="/resolved" className="block">
-            <StatsCard title="Resolved Issues" value={stats.resolved} icon={CheckCircle2} color={`bg-emerald-50 text-emerald-600 ${showResolved ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} />
-          </Link>
-        </div>
+        {/* Stats Grid */}
+        {user.role === UserRole.CLIENT_USER ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+            {/* Kept Client view as Links for now, or convert to filters if desired?
+                User request specifically mentioned "Staff accounts the buttons must act as filters".
+                I will keep Client as Links (StatsCard wrapped in Link) as per previous design unless specified.
+            */}
+            <Link to="/" className="block">
+              <StatsCard title="Open Tickets" value={stats.open} icon={Activity} color={`bg-blue-50 text-blue-600 ${!showResolved ? 'ring-2 ring-blue-500 ring-offset-2' : 'opacity-60 grayscale'}`} />
+            </Link>
+            <Link to="/resolved" className="block">
+              <StatsCard title="Resolved Issues" value={stats.resolved} icon={CheckCircle2} color={`bg-emerald-50 text-emerald-600 ${showResolved ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} />
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            <StatsCard
+              title="New"
+              value={tickets.filter(t => t.status === TicketStatus.NEW).length}
+              icon={Activity}
+              color={STATUS_COLORS[TicketStatus.NEW]}
+              onClick={() => handleFilterClick(TicketStatus.NEW)}
+              isActive={filterStatus === TicketStatus.NEW}
+            />
+            <StatsCard
+              title="Ack."
+              value={tickets.filter(t => t.status === TicketStatus.ACKNOWLEDGED).length}
+              icon={CheckCircle2}
+              color={STATUS_COLORS[TicketStatus.ACKNOWLEDGED]}
+              onClick={() => handleFilterClick(TicketStatus.ACKNOWLEDGED)}
+              isActive={filterStatus === TicketStatus.ACKNOWLEDGED}
+            />
+            <StatsCard
+              title="In Prog."
+              value={tickets.filter(t => t.status === TicketStatus.IN_PROGRESS).length}
+              icon={Activity}
+              color={STATUS_COLORS[TicketStatus.IN_PROGRESS]}
+              onClick={() => handleFilterClick(TicketStatus.IN_PROGRESS)}
+              isActive={filterStatus === TicketStatus.IN_PROGRESS}
+            />
+            <StatsCard
+              title="Hold"
+              value={tickets.filter(t => t.status === TicketStatus.HOLD_FOR_INFO).length}
+              icon={Activity}
+              color={STATUS_COLORS[TicketStatus.HOLD_FOR_INFO]}
+              onClick={() => handleFilterClick(TicketStatus.HOLD_FOR_INFO)}
+              isActive={filterStatus === TicketStatus.HOLD_FOR_INFO}
+            />
+            <StatsCard
+              title="Resolved"
+              value={tickets.filter(t => t.status === TicketStatus.RESOLVED).length}
+              icon={CheckCircle2}
+              color={STATUS_COLORS[TicketStatus.RESOLVED]}
+              onClick={() => handleFilterClick(TicketStatus.RESOLVED)}
+              isActive={filterStatus === TicketStatus.RESOLVED}
+            />
+            <StatsCard
+              title="Closed"
+              value={tickets.filter(t => t.status === TicketStatus.CLOSED).length}
+              icon={CheckCircle2}
+              color={STATUS_COLORS[TicketStatus.CLOSED]}
+              onClick={() => handleFilterClick(TicketStatus.CLOSED)}
+              isActive={filterStatus === TicketStatus.CLOSED}
+            />
+          </div>
+        )}
 
-        {/* Filter Bar */}
+        {/* Search Bar (Dropdown Removed) */}
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -141,25 +219,6 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-          </div>
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            <div className="flex items-center space-x-2 text-gray-500 text-sm px-1">
-              <Filter className="w-4 h-4" />
-              <span className="hidden md:inline">Filter:</span>
-            </div>
-            <select
-              className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option>All Statuses</option>
-              {Object.values(TicketStatus)
-                .filter(s => showResolved
-                  ? (s === TicketStatus.RESOLVED || s === TicketStatus.CLOSED)
-                  : (s !== TicketStatus.RESOLVED && s !== TicketStatus.CLOSED)
-                )
-                .map(s => <option key={s}>{s}</option>)}
-            </select>
           </div>
         </div>
 
