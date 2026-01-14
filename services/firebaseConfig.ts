@@ -4,12 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyCCPa6IxwtEFZeRn9KYPQESFyOD2XdcYVk",
+  authDomain: "ticketing-system-3ad55.firebaseapp.com",
+  projectId: "ticketing-system-3ad55",
+  storageBucket: "ticketing-system-3ad55.firebasestorage.app",
+  messagingSenderId: "44703752154",
+  appId: "1:44703752154:web:cc79d8456eab705c24eae3",
+  measurementId: "G-KYEPCC8FFZ"
 };
 
 const app = initializeApp(firebaseConfig);
