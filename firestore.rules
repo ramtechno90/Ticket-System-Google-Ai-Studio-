@@ -34,14 +34,12 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isManufacturer() || resource.data.clientId == getUserClientId());
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (
-        isManufacturer() || (
-          // Allow if user is the ticket owner OR belongs to the same client
-          (resource.data.userId == request.auth.uid || resource.data.clientId == getUserClientId()) && (
-             // Client can only reopen ticket (set to New) or soft delete
-             (request.resource.data.status == 'Acknowledge' && resource.data.status == 'Resolved') ||
-             (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
-          )
-        )
+        // Check ownership first to avoid potential read permissions issues in isManufacturer()
+        (resource.data.userId == request.auth.uid && (
+           request.resource.data.status == 'Acknowledge' ||
+           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
+        )) || 
+        isManufacturer()
       );
     }
 

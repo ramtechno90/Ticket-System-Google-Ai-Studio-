@@ -282,21 +282,32 @@ class FirebaseService {
   }
 
   async updateTicketStatus(ticketId: string, newStatus: TicketStatus): Promise<void> {
+    console.log(`[FirebaseService] updateTicketStatus called: id=${ticketId}, status=${newStatus}`);
     // First find the doc reference
-    const ticketsRef = collection(db, 'tickets');
-    const q = query(ticketsRef, where('id', '==', ticketId), limit(1));
-    const querySnapshot = await getDocs(q);
+    // Use direct document reference instead of query for efficiency and reliability
+    const docRef = doc(db, 'tickets', ticketId);
 
-    if (querySnapshot.empty) return;
+    // We need to fetch the doc to check permissions/validate status transitions if strictly needed,
+    // but the Rules will enforce the critical security.
+    // For the client-side checks (isManufacturer), we can fetch it, or optimize.
+    // The original code fetched it. Let's fetch it efficiently.
+    const docSnap = await getDoc(docRef);
 
-    const docRef = querySnapshot.docs[0].ref;
-    const ticket = querySnapshot.docs[0].data() as Ticket;
+    if (!docSnap.exists()) {
+      console.error(`[FirebaseService] Ticket not found with id: ${ticketId}`);
+      return;
+    }
+
+    const ticket = docSnap.data() as Ticket;
+    console.log(`[FirebaseService] Ticket found:`, ticket);
 
     // Validation rules
     const user = this.getCurrentUser()!;
     const isManufacturer = [UserRole.SUPPORT_AGENT, UserRole.SUPERVISOR, UserRole.ADMIN].includes(user.role);
+    console.log(`[FirebaseService] User role: ${user.role}, isManufacturer: ${isManufacturer}`);
 
     if (newStatus !== TicketStatus.NEW && newStatus !== TicketStatus.ACKNOWLEDGED && !isManufacturer) {
+      console.error("[FirebaseService] Permission denied: Client cannot set this status");
       throw new Error("Only manufacturer support can update execution states.");
     }
 
@@ -308,7 +319,14 @@ class FirebaseService {
     if (newStatus === TicketStatus.RESOLVED) updates.resolvedAt = Date.now();
     if (newStatus === TicketStatus.CLOSED) updates.closedAt = Date.now();
 
-    await updateDoc(docRef, updates);
+    console.log(`[FirebaseService] Applying updates:`, updates);
+    try {
+      await updateDoc(docRef, updates);
+      console.log("[FirebaseService] Firestore update complete");
+    } catch (e) {
+      console.error("[FirebaseService] Firestore update failed", e);
+      throw e;
+    }
 
     // System comment
     await this.addComment(ticketId, `Status updated to ${newStatus}`, true);

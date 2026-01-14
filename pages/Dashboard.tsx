@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -13,6 +13,7 @@ import {
 import { firebase } from '../services/firebaseService';
 import { Ticket, User, UserRole, TicketStatus } from '../types';
 import { STATUS_COLORS } from '../constants';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 
 const StatsCard = ({ title, value, icon: Icon, color, onClick, isActive }: any) => (
@@ -33,6 +34,7 @@ const StatsCard = ({ title, value, icon: Icon, color, onClick, isActive }: any) 
 );
 
 const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: boolean }) => {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All Statuses');
@@ -72,30 +74,46 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
       }
     } else {
       // In Active View
-      if (user.role !== UserRole.CLIENT_USER && filterStatus !== 'All Statuses') {
-        // Staff filter override: Show tickets matching filter regardless of Resolved/Closed state
+      if (filterStatus !== 'All Statuses') {
+        // Filter override: Show tickets matching filter regardless of Resolved/Closed state
         matchesStatus = t.status === filterStatus;
       } else {
-        // Default Logic (Clients or No Filter): Show ONLY Active tickets
+        // Default Logic: Show ONLY Active tickets
         const isActive = t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED;
-
-        if (filterStatus === 'All Statuses') {
-          matchesStatus = isActive;
-        } else {
-          matchesStatus = isActive && t.status === filterStatus;
-        }
+        matchesStatus = isActive;
       }
     }
 
     return matchesSearch && matchesStatus;
   });
 
-  // Soft Delete Handler
-  const handleDeleteTicket = async (e: React.MouseEvent, ticketId: string) => {
-    e.preventDefault(); // Prevent navigation
-    if (window.confirm('Are you sure you want to delete this ticket from your history?')) {
-      await firebase.deleteTicket(ticketId);
+  // Only show Actions column if there is at least one CLOSED ticket in the view
+  const showActionsColumn = filteredTickets.some(t => t.status === TicketStatus.CLOSED);
+
+  // Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
+
+  // Soft Delete Handler - Opens Modal
+  const handleDeleteClick = (e: React.MouseEvent, ticketId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTicketToDelete(ticketId);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirm Delete Action
+  const confirmDelete = async () => {
+    if (ticketToDelete) {
+      await firebase.deleteTicket(ticketToDelete);
+      setTicketToDelete(null);
+      setIsDeleteModalOpen(false);
     }
+  };
+
+  const cancelDelete = () => {
+    setTicketToDelete(null);
+    setIsDeleteModalOpen(false);
   };
 
   const stats = {
@@ -142,73 +160,59 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
 
       <div className="space-y-6 md:space-y-8">
         {/* Stats Grid */}
-        {user.role === UserRole.CLIENT_USER ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-            {/* Kept Client view as Links for now, or convert to filters if desired?
-                User request specifically mentioned "Staff accounts the buttons must act as filters".
-                I will keep Client as Links (StatsCard wrapped in Link) as per previous design unless specified.
-            */}
-            <Link to="/" className="block">
-              <StatsCard title="Open Tickets" value={stats.open} icon={Activity} color={`bg-blue-50 text-blue-600 ${!showResolved ? 'ring-2 ring-blue-500 ring-offset-2' : 'opacity-60 grayscale'}`} />
-            </Link>
-            <Link to="/resolved" className="block">
-              <StatsCard title="Resolved Issues" value={stats.resolved} icon={CheckCircle2} color={`bg-emerald-50 text-emerald-600 ${showResolved ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} />
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-            <StatsCard
-              title="New"
-              value={tickets.filter(t => t.status === TicketStatus.NEW).length}
-              icon={Activity}
-              color={STATUS_COLORS[TicketStatus.NEW]}
-              onClick={() => handleFilterClick(TicketStatus.NEW)}
-              isActive={filterStatus === TicketStatus.NEW}
-            />
-            <StatsCard
-              title="Ack."
-              value={tickets.filter(t => t.status === TicketStatus.ACKNOWLEDGED).length}
-              icon={CheckCircle2}
-              color={STATUS_COLORS[TicketStatus.ACKNOWLEDGED]}
-              onClick={() => handleFilterClick(TicketStatus.ACKNOWLEDGED)}
-              isActive={filterStatus === TicketStatus.ACKNOWLEDGED}
-            />
-            <StatsCard
-              title="In Prog."
-              value={tickets.filter(t => t.status === TicketStatus.IN_PROGRESS).length}
-              icon={Activity}
-              color={STATUS_COLORS[TicketStatus.IN_PROGRESS]}
-              onClick={() => handleFilterClick(TicketStatus.IN_PROGRESS)}
-              isActive={filterStatus === TicketStatus.IN_PROGRESS}
-            />
-            <StatsCard
-              title="Hold"
-              value={tickets.filter(t => t.status === TicketStatus.HOLD_FOR_INFO).length}
-              icon={Activity}
-              color={STATUS_COLORS[TicketStatus.HOLD_FOR_INFO]}
-              onClick={() => handleFilterClick(TicketStatus.HOLD_FOR_INFO)}
-              isActive={filterStatus === TicketStatus.HOLD_FOR_INFO}
-            />
-            <StatsCard
-              title="Resolved"
-              value={tickets.filter(t => t.status === TicketStatus.RESOLVED).length}
-              icon={CheckCircle2}
-              color={STATUS_COLORS[TicketStatus.RESOLVED]}
-              onClick={() => handleFilterClick(TicketStatus.RESOLVED)}
-              isActive={filterStatus === TicketStatus.RESOLVED}
-            />
-            <StatsCard
-              title="Closed"
-              value={tickets.filter(t => t.status === TicketStatus.CLOSED).length}
-              icon={CheckCircle2}
-              color={STATUS_COLORS[TicketStatus.CLOSED]}
-              onClick={() => handleFilterClick(TicketStatus.CLOSED)}
-              isActive={filterStatus === TicketStatus.CLOSED}
-            />
-          </div>
-        )}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <StatsCard
+            title="New"
+            value={tickets.filter(t => t.status === TicketStatus.NEW).length}
+            icon={Activity}
+            color={STATUS_COLORS[TicketStatus.NEW]}
+            onClick={() => handleFilterClick(TicketStatus.NEW)}
+            isActive={filterStatus === TicketStatus.NEW}
+          />
+          <StatsCard
+            title="Ack."
+            value={tickets.filter(t => t.status === TicketStatus.ACKNOWLEDGED).length}
+            icon={CheckCircle2}
+            color={STATUS_COLORS[TicketStatus.ACKNOWLEDGED]}
+            onClick={() => handleFilterClick(TicketStatus.ACKNOWLEDGED)}
+            isActive={filterStatus === TicketStatus.ACKNOWLEDGED}
+          />
+          <StatsCard
+            title="In Prog."
+            value={tickets.filter(t => t.status === TicketStatus.IN_PROGRESS).length}
+            icon={Activity}
+            color={STATUS_COLORS[TicketStatus.IN_PROGRESS]}
+            onClick={() => handleFilterClick(TicketStatus.IN_PROGRESS)}
+            isActive={filterStatus === TicketStatus.IN_PROGRESS}
+          />
+          <StatsCard
+            title="Hold"
+            value={tickets.filter(t => t.status === TicketStatus.HOLD_FOR_INFO).length}
+            icon={Activity}
+            color={STATUS_COLORS[TicketStatus.HOLD_FOR_INFO]}
+            onClick={() => handleFilterClick(TicketStatus.HOLD_FOR_INFO)}
+            isActive={filterStatus === TicketStatus.HOLD_FOR_INFO}
+          />
+          <StatsCard
+            title="Resolved"
+            value={tickets.filter(t => t.status === TicketStatus.RESOLVED).length}
+            icon={CheckCircle2}
+            color={STATUS_COLORS[TicketStatus.RESOLVED]}
+            onClick={() => handleFilterClick(TicketStatus.RESOLVED)}
+            isActive={filterStatus === TicketStatus.RESOLVED}
+          />
+          <StatsCard
+            title="Closed"
+            value={tickets.filter(t => t.status === TicketStatus.CLOSED).length}
+            icon={CheckCircle2}
+            color={STATUS_COLORS[TicketStatus.CLOSED]}
+            onClick={() => handleFilterClick(TicketStatus.CLOSED)}
+            isActive={filterStatus === TicketStatus.CLOSED}
+          />
+        </div>
 
-        {/* Search Bar (Dropdown Removed) */}
+        {/* Search Bar */}
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -232,16 +236,22 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
                   <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
                   <th className="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
-                  <th className="px-4 md:px-6 py-3 text-right text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                  {showActionsColumn && (
+                    <th className="px-4 md:px-6 py-3 text-right text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500 italic">Accessing database...</td></tr>
+                  <tr><td colSpan={showActionsColumn ? 5 : 4} className="px-6 py-10 text-center text-gray-500 italic">Accessing database...</td></tr>
                 ) : filteredTickets.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500 italic">No tickets found.</td></tr>
+                  <tr><td colSpan={showActionsColumn ? 5 : 4} className="px-6 py-10 text-center text-gray-500 italic">No tickets found.</td></tr>
                 ) : filteredTickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50 transition-colors group">
+                  <tr
+                    key={ticket.id}
+                    onClick={() => navigate(`/ticket/${ticket.id}`)}
+                    className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                  >
                     <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-xs md:text-sm font-bold text-blue-600">{ticket.id}</span>
@@ -261,23 +271,22 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
                     <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(ticket.updatedAt).toLocaleDateString()}
                     </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link to={`/ticket/${ticket.id}`} className="text-blue-600 hover:text-blue-900 flex items-center justify-end font-bold transition-all">
-                        <span className="hidden md:inline">View</span>
-                        <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                      </Link>
-
-                      {/* Delete Action for Resolved/Closed Tickets */}
-                      {(ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED) && (
-                        <button
-                          onClick={(e) => handleDeleteTicket(e, ticket.id)}
-                          className="ml-4 text-gray-400 hover:text-red-500 transition-colors p-1"
-                          title="Delete from history"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
+                    {showActionsColumn && (
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-3 md:gap-4 h-6">
+                          {/* Delete Action for Closed Tickets Only */}
+                          {ticket.status === TicketStatus.CLOSED && (
+                            <button
+                              onClick={(e) => handleDeleteClick(e, ticket.id)}
+                              className="text-gray-300 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50 ml-2"
+                              title="Delete from history"
+                            >
+                              <Trash2 className="w-4 h-4 md:w-4 md:h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -285,6 +294,16 @@ const Dashboard = ({ user, showResolved = false }: { user: User, showResolved?: 
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Delete Ticket"
+        message="Are you sure you want to delete this ticket from your history? This action cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 };

@@ -64,14 +64,19 @@ const TicketView = ({ user }: { user: User }) => {
   }
 
   const handleStatusChange = async (status: TicketStatus) => {
-    if (!ticket) return;
+    if (!ticket) {
+      return;
+    }
     try {
       await firebase.updateTicketStatus(ticket.id, status);
       // No need to reload, subscription handles it
     } catch (err: any) {
+      console.error(err);
       alert(err.message);
     }
   };
+
+
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,6 +231,7 @@ const TicketView = ({ user }: { user: User }) => {
                 <div className="pt-2 border-t border-emerald-200 flex flex-col sm:flex-row gap-2">
                   <Link to="/new-ticket" className="inline-flex items-center justify-center font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-6 py-2.5 rounded-lg transition-all shadow-md active:scale-95 text-sm">
                     <PlusCircle className="w-4 h-4 mr-2" />
+                    Reopen Ticket
                     Raise New Issue
                   </Link>
                 </div>
@@ -322,7 +328,7 @@ const TicketView = ({ user }: { user: User }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
