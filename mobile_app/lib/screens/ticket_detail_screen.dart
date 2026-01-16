@@ -75,23 +75,63 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     SizedBox(height: 12),
                     // Action Buttons
                     if (user?.role == UserRole.client_user) ...[
-                      if (ticket.status == TicketStatus.resolved)
-                         OutlinedButton(
+                      if (ticket.status == TicketStatus.holdForInfo)
+                         ElevatedButton.icon(
+                           icon: Icon(Icons.send),
+                           label: Text('Provide Info'),
                            onPressed: () => _updateStatus(TicketStatus.acknowledged),
-                           child: Text('Reopen Ticket'),
+                         ),
+                      if (ticket.status == TicketStatus.resolved)
+                         OutlinedButton.icon(
+                           icon: Icon(Icons.refresh),
+                           label: Text('Reopen Ticket'),
+                           onPressed: () => _updateStatus(TicketStatus.acknowledged),
                          )
                     ] else ...[
                        Wrap(
                          spacing: 8,
                          children: [
-                           if (ticket.status == TicketStatus.newTicket)
-                             ElevatedButton(onPressed: () => _updateStatus(TicketStatus.acknowledged), child: Text('Acknowledge')),
-                           if (ticket.status != TicketStatus.inProgress && ticket.status != TicketStatus.resolved && ticket.status != TicketStatus.closed)
-                             ElevatedButton(onPressed: () => _updateStatus(TicketStatus.inProgress), child: Text('Start Work')),
-                           if (ticket.status != TicketStatus.holdForInfo && ticket.status != TicketStatus.resolved && ticket.status != TicketStatus.closed)
-                             ElevatedButton(onPressed: () => _updateStatus(TicketStatus.holdForInfo), child: Text('Hold')),
-                           if (ticket.status != TicketStatus.resolved && ticket.status != TicketStatus.closed)
-                             ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () => _updateStatus(TicketStatus.resolved), child: Text('Resolve')),
+                           if (ticket.status == TicketStatus.newTicket) ...[
+                             ElevatedButton(
+                               onPressed: () => _updateStatus(TicketStatus.acknowledged),
+                               child: Text('Acknowledge')
+                             ),
+                             OutlinedButton(
+                               onPressed: () => _updateStatus(TicketStatus.holdForInfo),
+                               child: Text('Hold for Info')
+                             ),
+                           ],
+
+                           if (ticket.status == TicketStatus.acknowledged)
+                             ElevatedButton(
+                               onPressed: () => _updateStatus(TicketStatus.inProgress),
+                               child: Text('Progress Work')
+                             ),
+
+                           if (ticket.status == TicketStatus.holdForInfo) ...[
+                             ElevatedButton(
+                               onPressed: () => _updateStatus(TicketStatus.inProgress),
+                               child: Text('Progress Work')
+                             ),
+                             OutlinedButton(
+                               onPressed: () => _updateStatus(TicketStatus.acknowledged),
+                               child: Text('Acknowledge')
+                             ),
+                           ],
+
+                           if (ticket.status == TicketStatus.inProgress)
+                             ElevatedButton(
+                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                               onPressed: () => _updateStatus(TicketStatus.resolved),
+                               child: Text('Resolved')
+                             ),
+
+                           if (ticket.status == TicketStatus.resolved)
+                             ElevatedButton(
+                               style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], foregroundColor: Colors.white),
+                               onPressed: () => _updateStatus(TicketStatus.closed),
+                               child: Text('Closed')
+                             ),
                          ],
                        )
                     ]
