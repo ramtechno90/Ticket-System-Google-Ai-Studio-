@@ -75,12 +75,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     SizedBox(height: 12),
                     // Action Buttons
                     if (user?.role == UserRole.client_user) ...[
-                      if (ticket.status == TicketStatus.holdForInfo)
-                         ElevatedButton.icon(
-                           icon: Icon(Icons.send),
-                           label: Text('Provide Info'),
-                           onPressed: () => _updateStatus(TicketStatus.acknowledged),
-                         ),
+                      // Client removed 'Hold for Info' -> 'Acknowledge' permission
                       if (ticket.status == TicketStatus.resolved)
                          OutlinedButton.icon(
                            icon: Icon(Icons.refresh),
@@ -109,10 +104,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                              ),
 
                            if (ticket.status == TicketStatus.holdForInfo) ...[
-                             ElevatedButton(
-                               onPressed: () => _updateStatus(TicketStatus.inProgress),
-                               child: Text('Progress Work')
-                             ),
+                             // Staff restricted to only 'Acknowledge' from 'Hold for Info'
                              OutlinedButton(
                                onPressed: () => _updateStatus(TicketStatus.acknowledged),
                                child: Text('Acknowledge')
