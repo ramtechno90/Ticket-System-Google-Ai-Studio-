@@ -84,7 +84,7 @@ exports.onTicketUpdate = onDocumentUpdated("tickets/{ticketId}", async (event) =
 });
 
 // Trigger: New Comment
-exports.onCommentCreate = onDocumentCreated("tickets/{ticketId}/comments/{commentId}", async (event) => {
+exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commentId}", async (event) => {
   const comment = event.data.data();
   const ticketId = event.params.ticketId;
 
