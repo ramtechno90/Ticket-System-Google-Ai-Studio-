@@ -18,6 +18,7 @@ class Ticket {
   final bool deletedByClient;
   final bool deletedByStaff;
 
+  // Constructor
   Ticket({
     required this.id,
     required this.clientId,
