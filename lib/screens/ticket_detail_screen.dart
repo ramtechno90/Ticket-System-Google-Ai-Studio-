@@ -332,14 +332,19 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Flexible(
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Flexible(child: Text(ticket.userName, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                                  const Text(' reported in ', style: TextStyle(color: Colors.grey)),
-                                  Flexible(child: Text(ticket.category.value, style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                                ],
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    WidgetSpan(
+                                      child: const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                                      alignment: PlaceholderAlignment.middle,
+                                    ),
+                                    const WidgetSpan(child: SizedBox(width: 4)),
+                                    TextSpan(text: ticket.userName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                                    const TextSpan(text: ' reported in ', style: TextStyle(color: Colors.grey)),
+                                    TextSpan(text: ticket.category.value, style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
