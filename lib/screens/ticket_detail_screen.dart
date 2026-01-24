@@ -290,6 +290,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 800;
+              final isShort = constraints.maxHeight < 600;
 
               Widget buildStatus() => Container(
                     width: double.infinity,
@@ -385,14 +386,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     )
                   : const SizedBox.shrink();
               
-              Widget buildTimeline() {
+              Widget buildTimeline({bool forceScrollable = false}) {
                 if (_isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                final useParentScroll = !isWide || forceScrollable;
                 return ListView.builder(
-                  controller: isWide ? _scrollController : null, // Only use controller on desktop
-                  shrinkWrap: !isWide, // Shrink wrap for mobile
-                  physics: isWide ? null : const NeverScrollableScrollPhysics(), // Use parent scroll on mobile
+                  controller: useParentScroll ? null : _scrollController,
+                  shrinkWrap: useParentScroll,
+                  physics: useParentScroll ? const NeverScrollableScrollPhysics() : null,
                   itemCount: _comments.length + (_hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _comments.length) {
@@ -404,20 +406,39 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               }
 
               Widget buildMainContent() {
-                final timeline = buildTimeline();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    buildDescriptionCard(),
-                    const SizedBox(height: 24),
-                    const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 16),
-                    isWide ? Expanded(child: timeline) : timeline, // Expanded for desktop
-                    const SizedBox(height: 16),
-                    buildCommentInput(),
-                    const SizedBox(height: 32), // Bottom padding
-                  ],
-                );
+                final timeline = buildTimeline(forceScrollable: isShort);
+
+                if (isWide && !isShort) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildDescriptionCard(),
+                      const SizedBox(height: 24),
+                      const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 16),
+                      Expanded(child: timeline),
+                      const SizedBox(height: 16),
+                      buildCommentInput(),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                } else {
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        buildDescriptionCard(),
+                        const SizedBox(height: 24),
+                        const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 16),
+                        timeline,
+                        const SizedBox(height: 16),
+                        buildCommentInput(),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  );
+                }
               }
 
               if (isWide) {
@@ -428,7 +449,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     children: [
                       Expanded(flex: 2, child: buildMainContent()),
                       const SizedBox(width: 24),
-                      Expanded(flex: 1, child: Column(children: [buildStatus(), const SizedBox(height: 16), _buildActionButtons(ticket, user)])),
+                      Expanded(
+                        flex: 1,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              buildStatus(),
+                              const SizedBox(height: 16),
+                              _buildActionButtons(ticket, user),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 );
