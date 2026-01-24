@@ -40,6 +40,7 @@ class NotificationService {
     return _db
         .collection('notifications')
         .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
