@@ -16,7 +16,7 @@ class FirestoreService {
       }
       return null;
     } catch (e) {
-      print('Error getting user: $e');
+      // print('Error getting user: $e');
       return null;
     }
   }
@@ -38,10 +38,30 @@ class FirestoreService {
     }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return Ticket.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }).toList();
+      return snapshot.docs
+          .map((doc) {
+            return Ticket.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          })
+          .where((ticket) {
+            if (user.role == UserRole.client_user) {
+              return !ticket.deletedByClient;
+            } else {
+              return !ticket.deletedByStaff;
+            }
+          })
+          .toList();
     });
+  }
+
+  Future<void> deleteTicket(String ticketId, UserRole role) async {
+    final Map<String, dynamic> updateData = {};
+    if (role == UserRole.client_user) {
+      updateData['deletedByClient'] = true;
+    } else {
+      updateData['deletedByStaff'] = true;
+    }
+
+    await _db.collection('tickets').doc(ticketId).update(updateData);
   }
 
   DocumentReference getNewTicketRef() {
@@ -95,7 +115,7 @@ class FirestoreService {
 
     final snapshot = await query.get();
     final comments = snapshot.docs
-        .map((doc) => Comment.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .map((doc) => Comment.fromMap(doc.data(), doc.id))
         .toList();
     
     final newLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
@@ -116,7 +136,7 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
-            return Comment.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+            return Comment.fromMap(doc.data(), doc.id);
           }).toList();
         });
   }

@@ -173,6 +173,24 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
+  Future<void> _deleteTicket(String ticketId, UserRole role) async {
+    try {
+      await _firestoreService.deleteTicket(ticketId, role);
+      if (mounted) {
+        Navigator.of(context).pop(); // Return to dashboard
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ticket deleted from view')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting ticket: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildActionButtons(Ticket ticket, UserModel user) {
     bool isManufacturer = [UserRole.support_agent, UserRole.supervisor, UserRole.admin].contains(user.role);
     List<Widget> buttons = [];
@@ -198,6 +216,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       if (ticket.status == TicketStatus.resolved) {
         buttons.add(_buildActionButton('Reopen Ticket', () => _updateStatus(TicketStatus.acknowledged), Colors.green, Colors.white));
       }
+    }
+
+    if (ticket.status == TicketStatus.closed) {
+      if (buttons.isNotEmpty) buttons.add(const SizedBox(height: 8));
+      buttons.add(_buildActionButton(
+        'Delete Ticket',
+        () => _deleteTicket(ticket.id, user.role),
+        Colors.red,
+        Colors.white,
+      ));
     }
 
     if (buttons.isEmpty) return const SizedBox.shrink();

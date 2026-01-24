@@ -5,6 +5,7 @@ import '../models/ticket_model.dart';
 import '../models/enums.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/stats_card.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -17,6 +18,17 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   TicketStatus? _filterStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = Provider.of<AuthService>(context, listen: false).currentUser;
+      if (user != null) {
+        NotificationService().init(user.uid);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +47,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? '${user.clientName ?? "Client"} Dashboard' 
           : 'Manufacturer Support'),
         actions: [
+          StreamBuilder<int>(
+            stream: NotificationService().getUnreadCount(user.uid),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return IconButton(
+                icon: Badge(
+                  isLabelVisible: count > 0,
+                  label: Text(count.toString()),
+                  child: const Icon(Icons.notifications),
+                ),
+                onPressed: () => context.push('/notifications'),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => authService.signOut(),
@@ -219,12 +245,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-           context.push('/new-ticket');
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: user.role == UserRole.client_user
+          ? FloatingActionButton(
+              onPressed: () {
+                context.push('/new-ticket');
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

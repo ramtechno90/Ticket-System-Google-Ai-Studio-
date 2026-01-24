@@ -39,7 +39,7 @@ service cloud.firestore {
       // A user can read a ticket if they are a manufacturer OR their clientId matches the ticket's
       allow read: if isSignedIn() && canReadTicket(resource);
       
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && !isManufacturer();
       allow update: if isSignedIn() && (
         (resource.data.userId == request.auth.uid && (
            request.resource.data.status == 'Acknowledge' ||
