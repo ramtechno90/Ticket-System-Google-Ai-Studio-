@@ -51,7 +51,14 @@ service cloud.firestore {
       // **FIXED**: Rules for the 'comments' subcollection
       match /comments/{commentId} {
         // A user can read/create a comment if they can read the parent ticket.
-        allow read, create: if isSignedIn() && canReadTicket(get(/databases/$(database)/documents/tickets/$(ticketId)));
+        // We inline the logic to ensure reliable evaluation and avoid function call context issues.
+        allow read, create: if isSignedIn() && (
+          isManufacturer() ||
+          (
+            exists(/databases/$(database)/documents/tickets/$(ticketId)) &&
+            get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
+          )
+        );
       }
     }
 
