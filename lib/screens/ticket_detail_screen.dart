@@ -275,8 +275,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         foregroundColor: Colors.black,
         elevation: 1,
       ),
-      body: FutureBuilder<Ticket?>(
-        future: _firestoreService.getTicket(widget.ticketId),
+      body: StreamBuilder<Ticket?>(
+        stream: _firestoreService.getTicketStream(widget.ticketId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

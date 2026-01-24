@@ -70,6 +70,15 @@ class FirestoreService {
     return null;
   }
 
+  Stream<Ticket?> getTicketStream(String id) {
+    return _db.collection('tickets').doc(id).snapshots().map((doc) {
+      if (doc.exists) {
+        return Ticket.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+      return null;
+    });
+  }
+
   // --- Comments ---
   Future<Map<String, dynamic>> getComments(String ticketId, {DocumentSnapshot? lastDoc}) async {
     const int _limit = 10;
