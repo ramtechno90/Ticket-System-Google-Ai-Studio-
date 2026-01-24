@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserRole() {
+      return userDocExists() ? getUserDoc().data.role : null;
+    }
+
+    function getUserClientId() {
+      return userDocExists() ? getUserDoc().data.clientId : null;
+    }
+
+    function isManufacturer() {
+      return getUserRole() in ['support_agent', 'supervisor', 'admin'];
+    }
+
+    // Checks if the user should be able to read a given ticket
+    function canReadTicket(ticket) {
+      return isManufacturer() || ticket.data.clientId == getUserClientId();
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isManufacturer() || request.auth.uid == userId;
+    }
+
+    match /tickets/{ticketId} {
+      // A user can read a ticket if they are a manufacturer OR their clientId matches the ticket's
+      allow read: if isSignedIn() && canReadTicket(resource);
+      
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid && (
+           request.resource.data.status == 'Acknowledge' ||
+           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
+        )) || 
+        isManufacturer()
+      );
+
+      // **FIXED**: Rules for the 'comments' subcollection
+      match /comments/{commentId} {
+        // A user can read/create a comment if they can read the parent ticket.
+        allow read, create: if isSignedIn() && canReadTicket(get(/databases/$(database)/documents/tickets/$(ticketId)));
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isManufacturer());
+    }
+  }
+}
