@@ -1,32 +1,112 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const admin = require("firebase-admin");
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+admin.initializeApp();
+const db = admin.firestore();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Helper to send notification
+async function sendNotification(userId, title, body, ticketId) {
+  try {
+    // 1. Create Notification Document in Firestore
+    await db.collection("notifications").add({
+      userId: userId,
+      title: title,
+      body: body,
+      ticketId: ticketId,
+      timestamp: Date.now(),
+      isRead: false
+    });
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+    // 2. Send FCM
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) return;
+
+    const userData = userDoc.data();
+    const tokens = userData.fcmTokens || [];
+
+    if (tokens.length === 0) return;
+
+    const message = {
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: {
+        ticketId: ticketId,
+        click_action: "FLUTTER_NOTIFICATION_CLICK"
+      },
+      tokens: tokens,
+    };
+
+    const response = await admin.messaging().sendMulticast(message);
+
+    // Optional: Cleanup invalid tokens
+    if (response.failureCount > 0) {
+      const failedTokens = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          failedTokens.push(tokens[idx]);
+        }
+      });
+      if (failedTokens.length > 0) {
+        await db.collection("users").doc(userId).update({
+          fcmTokens: admin.firestore.FieldValue.arrayRemove(...failedTokens)
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error sending notification:", error);
+  }
+}
+
+// Trigger: Ticket Status Update
+exports.onTicketUpdate = onDocumentUpdated("tickets/{ticketId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  const ticketId = event.params.ticketId;
+
+  // Check for status change
+  if (before.status !== after.status) {
+    const newStatus = after.status;
+    const clientUserId = after.userId; // The creator (Client)
+
+    // Notify the Client User
+    await sendNotification(
+      clientUserId,
+      `Ticket #${ticketId} Update`,
+      `Status changed to: ${newStatus}`,
+      ticketId
+    );
+  }
+});
+
+// Trigger: New Comment
+exports.onCommentCreate = onDocumentCreated("tickets/{ticketId}/comments/{commentId}", async (event) => {
+  const comment = event.data.data();
+  const ticketId = event.params.ticketId;
+
+  // Get ticket to know who is who
+  const ticketDoc = await db.collection("tickets").doc(ticketId).get();
+  if (!ticketDoc.exists) return;
+  const ticket = ticketDoc.data();
+
+  // Determine Sender and Recipient
+  const senderId = comment.userId;
+  const senderRole = comment.userRole;
+
+  // If Staff commented -> Notify Client
+  if (senderRole !== 'client_user') {
+    const clientUserId = ticket.userId;
+    if (senderId !== clientUserId) { // Don't notify self (if staff created ticket for themselves?)
+      await sendNotification(
+        clientUserId,
+        `New Reply on Ticket #${ticketId}`,
+        `${comment.userName}: ${comment.text}`,
+        ticketId
+      );
+    }
+  }
+});
