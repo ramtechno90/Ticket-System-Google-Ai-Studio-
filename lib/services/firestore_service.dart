@@ -76,11 +76,21 @@ class FirestoreService {
     }
   }
 
-  Future<void> updateTicketStatus(String ticketId, TicketStatus status) async {
-    await _db.collection('tickets').doc(ticketId).update({
+  Future<void> updateTicketStatus(String ticketId, TicketStatus status, {Comment? systemComment}) async {
+    final batch = _db.batch();
+    final ticketRef = _db.collection('tickets').doc(ticketId);
+
+    batch.update(ticketRef, {
       'status': status.value,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     });
+
+    if (systemComment != null) {
+      final commentRef = ticketRef.collection('comments').doc(systemComment.id);
+      batch.set(commentRef, systemComment.toMap());
+    }
+
+    await batch.commit();
   }
   Future<Ticket?> getTicket(String id) async {
     final doc = await _db.collection('tickets').doc(id).get();
@@ -131,7 +141,7 @@ class FirestoreService {
         .collection('tickets')
         .doc(ticketId)
         .collection('comments')
-        .where('timestamp', isGreaterThan: after)
+        .where('timestamp', isGreaterThan: after.millisecondsSinceEpoch)
         .orderBy('timestamp', descending: false)
         .snapshots()
         .map((snapshot) {

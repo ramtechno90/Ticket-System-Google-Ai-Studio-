@@ -158,7 +158,27 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Future<void> _updateStatus(TicketStatus status) async {
     try {
-      await _firestoreService.updateTicketStatus(widget.ticketId, status);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser!;
+
+      final systemComment = Comment(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        ticketId: widget.ticketId,
+        userId: user.uid,
+        userName: user.name,
+        userRole: user.role,
+        text: 'Status changed to ${status.value}',
+        timestamp: DateTime.now(),
+        isSystemMessage: true,
+        clientId: user.clientId,
+      );
+
+      await _firestoreService.updateTicketStatus(
+        widget.ticketId,
+        status,
+        systemComment: systemComment
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ticket status updated to ${status.value}')),
@@ -264,6 +284,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   Widget _buildCommentItem(Comment comment) {
+    if (comment.isSystemMessage) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            comment.text,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+          ),
+        ),
+      );
+    }
+
     bool isClient = comment.userRole == UserRole.client_user;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
