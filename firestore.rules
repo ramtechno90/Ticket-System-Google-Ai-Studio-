@@ -30,6 +30,14 @@ service cloud.firestore {
       return isManufacturer() || ticket.data.clientId == getUserClientId();
     }
 
+    // Checks if the user can read a ticket given its ID (fetching it)
+    function canReadTicketById(ticketId) {
+      return isManufacturer() || (
+        exists(/databases/$(database)/documents/tickets/$(ticketId)) &&
+        get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
+      );
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isManufacturer() || request.auth.uid == userId;
@@ -48,17 +56,9 @@ service cloud.firestore {
         isManufacturer()
       );
 
-      // **FIXED**: Rules for the 'comments' subcollection
       match /comments/{commentId} {
         // A user can read/create a comment if they can read the parent ticket.
-        // We inline the logic to ensure reliable evaluation and avoid function call context issues.
-        allow read, create: if isSignedIn() && (
-          isManufacturer() ||
-          (
-            exists(/databases/$(database)/documents/tickets/$(ticketId)) &&
-            get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
-          )
-        );
+        allow read, create: if isSignedIn() && canReadTicketById(ticketId);
       }
     }
 
