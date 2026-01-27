@@ -9,12 +9,22 @@ import 'screens/dashboard_screen.dart';
 import 'screens/create_ticket_screen.dart';
 import 'screens/ticket_detail_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Handle background messages
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // print("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(const MyApp());
 }
 
@@ -97,6 +107,9 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
 
   @override
   Widget build(BuildContext context) {
+    // Setup notification listeners once the router is ready
+    _setupNotificationListeners();
+
     return MaterialApp.router(
       title: 'Ticketing System',
       theme: ThemeData(
@@ -105,5 +118,38 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
       ),
       routerConfig: _router,
     );
+  }
+
+  void _setupNotificationListeners() {
+    // 1. Terminated State: App opened from notification
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        _handleNotificationClick(message);
+      }
+    });
+
+    // 2. Background State: App opened from notification
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleNotificationClick(message);
+    });
+
+    // 3. Foreground State: App is open
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        // Here you could show a local notification or a snackbar
+        // For simplicity, we can show a SnackBar if we are in a valid context
+        // But MaterialApp.router context is above the Navigator.
+        // We rely on the system tray notification which usually doesn't show in foreground on iOS unless configured.
+        // On Android it doesn't show by default in foreground.
+        // To show foreground notification properly requires flutter_local_notifications.
+    });
+  }
+
+  void _handleNotificationClick(RemoteMessage message) {
+    if (message.data.containsKey('ticketId')) {
+      final ticketId = message.data['ticketId'];
+      // Navigate to the ticket
+      // We need to wait for auth to be ready ideally, but GoRouter redirect will handle it if not logged in.
+      _router.push('/ticket/$ticketId');
+    }
   }
 }
