@@ -131,9 +131,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         .listen((newComments) {
       if (mounted) {
         setState(() {
-          for (final newComment in newComments.reversed) { // Insert in correct order
+          for (final newComment in newComments) { // Insert in correct order for reverse list
             if (!_comments.any((c) => c.id == newComment.id)) {
-              _comments.insert(0, newComment); // Add to top
+              _comments.insert(0, newComment); // Add to index 0 (Bottom in reverse list)
             }
           }
         });
