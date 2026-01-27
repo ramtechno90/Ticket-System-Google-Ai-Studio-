@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserRole() {
+      return userDocExists() ? getUserDoc().data.role : null;
+    }
+
+    function getUserClientId() {
+      return userDocExists() ? getUserDoc().data.clientId : null;
+    }
+
+    function isManufacturer() {
+      return getUserRole() in ['support_agent', 'supervisor', 'admin'];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isManufacturer() || request.auth.uid == userId;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if isSignedIn() && (isManufacturer() || resource.data.clientId == getUserClientId());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        // Check ownership first to avoid potential read permissions issues in isManufacturer()
+        (resource.data.userId == request.auth.uid && (
+           request.resource.data.status == 'Acknowledge' ||
+           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
+        )) || 
+        isManufacturer()
+      );
+    }
+
+    match /comments/{commentId} {
+      allow read: if isSignedIn() && (isManufacturer() || resource.data.clientId == getUserClientId() || get(/databases/$(database)/documents/tickets/$(resource.data.ticketId)).data.clientId == getUserClientId());
+      allow create: if isSignedIn();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn(); // Allow anyone to create notifications (e.g. sender creating for recipient)
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isManufacturer());
+    }
+  }
+}
