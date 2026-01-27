@@ -42,10 +42,28 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _listenForNewComments();
 
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
-          !_isLoadingMore &&
-          _hasMore) {
-        _fetchMoreComments();
+      bool isWide = MediaQuery.of(context).size.width > 800;
+      bool isShort = MediaQuery.of(context).size.height < 600;
+      bool useParentScroll = !isWide || isShort;
+
+      if (useParentScroll) {
+        // Mobile: Parent Scroll (SingleChildScrollView)
+        // List is reversed (Oldest at Top). We load more when scrolling Up (to Top).
+        // Since SingleChildScrollView starts at 0 (Top), checking <= 200 handles "Near Top".
+        if (_scrollController.position.pixels <= 200 &&
+            !_isLoadingMore &&
+            _hasMore) {
+          _fetchMoreComments();
+        }
+      } else {
+        // Desktop: ListView Scroll (reverse: true)
+        // 0 is Bottom (Newest). MaxScrollExtent is Top (Oldest).
+        // We load more when near MaxScrollExtent.
+        if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+            !_isLoadingMore &&
+            _hasMore) {
+          _fetchMoreComments();
+        }
       }
     });
   }
@@ -462,6 +480,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 }
                 final useParentScroll = !isWide || forceScrollable;
                 return ListView.builder(
+                  reverse: true,
                   controller: useParentScroll ? null : _scrollController,
                   shrinkWrap: useParentScroll,
                   physics: useParentScroll ? const NeverScrollableScrollPhysics() : null,
