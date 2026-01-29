@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../models/ticket_model.dart';
-import '../models/user_model.dart';
 import '../models/enums.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -19,8 +18,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   TicketStatus? _filterStatus;
-  Stream<List<Ticket>>? _ticketsStream;
-  UserModel? _currentUser;
 
   @override
   void initState() {
@@ -34,23 +31,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final user = Provider.of<AuthService>(context).currentUser;
-    if (user != _currentUser) {
-      _currentUser = user;
-      if (user != null) {
-        _ticketsStream = FirestoreService().getTickets(user);
-      } else {
-        _ticketsStream = null;
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
+    final firestoreService = FirestoreService();
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -70,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: StreamBuilder<List<Ticket>>(
-        stream: _ticketsStream,
+        stream: firestoreService.getTickets(user),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));

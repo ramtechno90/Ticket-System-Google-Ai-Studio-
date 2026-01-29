@@ -55,7 +55,6 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
   @override
   void initState() {
     super.initState();
-    _setupNotificationListeners();
     final authService = Provider.of<AuthService>(context, listen: false);
 
     _router = GoRouter(
@@ -124,6 +123,9 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
 
   @override
   Widget build(BuildContext context) {
+    // Setup notification listeners once the router is ready
+    _setupNotificationListeners();
+
     return MaterialApp.router(
       title: 'Ticketing System',
       theme: ThemeData(
