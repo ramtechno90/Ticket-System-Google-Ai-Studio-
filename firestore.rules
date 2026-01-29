@@ -9,12 +9,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function getUserRole() {
-      return getUserDoc().data.role;
+      return userDocExists() ? getUserDoc().data.role : null;
     }
 
     function getUserClientId() {
-      return getUserDoc().data.clientId;
+      return userDocExists() ? getUserDoc().data.clientId : null;
     }
 
     function isManufacturer() {
@@ -23,7 +27,7 @@ service cloud.firestore {
 
     // Checks if the user should be able to read a given ticket
     function canReadTicket(ticket) {
-      return isManufacturer() || ticket.data.clientId == getUserClientId();
+      return isManufacturer() || (userDocExists() && ticket.data.clientId == getUserClientId());
     }
 
     match /users/{userId} {
@@ -47,8 +51,10 @@ service cloud.firestore {
       match /comments/{commentId} {
         // A user can read/create a comment if they can read the parent ticket.
         allow read, create: if isSignedIn() && (
-          isManufacturer() ||
-          get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
+          isManufacturer() || (
+            exists(/databases/$(database)/documents/tickets/$(ticketId)) &&
+            get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
+          )
         );
       }
     }

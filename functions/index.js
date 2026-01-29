@@ -36,7 +36,8 @@ async function sendNotification(userId, title, body, ticketId) {
       },
       android: {
         notification: {
-          tag: notificationRef.id // Unique identity for each notification
+          tag: notificationRef.id, // Unique identity for each notification
+          channel_id: "high_importance_channel"
         }
       },
       data: {
