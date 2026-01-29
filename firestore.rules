@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     function isManufacturer() {
-      return getUserRole() in ['support_agent', 'supervisor', 'admin'];
+      return getUserRole() in ['support_agent', 'supervisor', 'admin', 'lead_supervisor', 'lead_support_agent'];
     }
 
     // Checks if the user should be able to read a given ticket
@@ -43,19 +43,15 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         (resource.data.userId == request.auth.uid && (
            request.resource.data.status == 'Acknowledge' ||
-           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true)
+           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true) ||
+           resource.data.isInternal == false
         )) || 
         isManufacturer()
       );
 
       match /comments/{commentId} {
         // A user can read/create a comment if they can read the parent ticket.
-        allow read, create: if isSignedIn() && (
-          isManufacturer() || (
-            exists(/databases/$(database)/documents/tickets/$(ticketId)) &&
-            get(/databases/$(database)/documents/tickets/$(ticketId)).data.clientId == getUserClientId()
-          )
-        );
+        allow read, create: if isSignedIn() && canReadTicket(get(/databases/$(database)/documents/tickets/$(ticketId)));
       }
     }
 

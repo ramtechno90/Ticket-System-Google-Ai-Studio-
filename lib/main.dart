@@ -59,25 +59,41 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
 
     _router = GoRouter(
       refreshListenable: authService,
-      initialLocation: '/',
+      initialLocation: '/splash',
       redirect: (context, state) {
         final isLoggedIn = authService.currentUser != null;
         final isLoggingIn = state.uri.toString() == '/login';
+        final isSplashing = state.uri.toString() == '/splash';
 
         if (authService.isLoading) {
-          return null;
+          // If we're loading, stay on the splash screen.
+          return isSplashing ? null : '/splash';
+        }
+
+        if (isSplashing) {
+          // If we're done loading and on the splash screen, redirect.
+          return isLoggedIn ? '/' : '/login';
         }
 
         if (!isLoggedIn && !isLoggingIn) {
+          // If not logged in and not on the login page, redirect to login.
           return '/login';
         }
+
         if (isLoggedIn && isLoggingIn) {
+          // If logged in and on the login page, redirect to the dashboard.
           return '/';
         }
 
-        return null;
+        return null; // No redirect needed.
       },
       routes: [
+        GoRoute(
+          path: '/splash',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
+        ),
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
@@ -135,12 +151,12 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
 
     // 3. Foreground State: App is open
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        // Here you could show a local notification or a snackbar
-        // For simplicity, we can show a SnackBar if we are in a valid context
-        // But MaterialApp.router context is above the Navigator.
-        // We rely on the system tray notification which usually doesn't show in foreground on iOS unless configured.
-        // On Android it doesn't show by default in foreground.
-        // To show foreground notification properly requires flutter_local_notifications.
+      // Here you could show a local notification or a snackbar
+      // For simplicity, we can show a SnackBar if we are in a valid context
+      // But MaterialApp.router context is above the Navigator.
+      // We rely on the system tray notification which usually doesn't show in foreground on iOS unless configured.
+      // On Android it doesn't show by default in foreground.
+      // To show foreground notification properly requires flutter_local_notifications.
     });
   }
 
