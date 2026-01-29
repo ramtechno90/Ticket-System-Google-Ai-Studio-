@@ -9,16 +9,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    function userDocExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
     function getUserRole() {
-      return userDocExists() ? getUserDoc().data.role : null;
+      return getUserDoc().data.role;
     }
 
     function getUserClientId() {
-      return userDocExists() ? getUserDoc().data.clientId : null;
+      return getUserDoc().data.clientId;
     }
 
     function isManufacturer() {
