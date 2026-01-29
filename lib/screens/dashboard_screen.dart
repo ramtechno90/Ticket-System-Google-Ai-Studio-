@@ -47,20 +47,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? '${user.clientName ?? "Client"} Dashboard' 
           : 'Manufacturer Support'),
         actions: [
-          StreamBuilder<int>(
-            stream: NotificationService().getUnreadCount(user.uid),
-            builder: (context, snapshot) {
-              final count = snapshot.data ?? 0;
-              return IconButton(
-                icon: Badge(
-                  isLabelVisible: count > 0,
-                  label: Text(count.toString()),
-                  child: const Icon(Icons.notifications),
-                ),
-                onPressed: () => context.push('/notifications'),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => authService.signOut(),

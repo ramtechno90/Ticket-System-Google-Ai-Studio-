@@ -11,7 +11,7 @@ setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
 async function sendNotification(userId, title, body, ticketId) {
   try {
     // 1. Create Notification Document in Firestore
-    await db.collection("notifications").add({
+    const notificationRef = await db.collection("notifications").add({
       userId: userId,
       title: title,
       body: body,
@@ -34,9 +34,15 @@ async function sendNotification(userId, title, body, ticketId) {
         title: title,
         body: body,
       },
+      android: {
+        notification: {
+          tag: notificationRef.id // Unique identity for each notification
+        }
+      },
       data: {
         ticketId: ticketId,
-        click_action: "FLUTTER_NOTIFICATION_CLICK"
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        notificationId: notificationRef.id
       },
       tokens: tokens,
     };
@@ -91,16 +97,16 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
   // 2. If Staff sent it -> Notify Client (unless Client is the sender, which shouldn't happen for staff role, but safety first)
 
   if (senderRole === 'client_user') {
-    // Notify Manufacturer (All support agents/admins?)
-    // Real-world: Notify specific agents. Here: We don't have a "staff" list easily.
-    // Optimization for this specific app structure:
-    // We will just log this for now as the requirement implies "The users" (plural) getting notification,
-    // usually referring to the Client getting updates from Staff.
-    // However, if we need to notify staff, we'd need to query users by role.
+    // Notify Manufacturer (All support agents/admins)
+    const staffSnapshot = await db.collection("users")
+      .where("role", "in", ["support_agent", "supervisor", "admin"])
+      .get();
 
-    // For now, adhering to the common flow: Notify the Client if *someone else* updated it.
-    // If the Client updated it, they don't need a notification.
-    return;
+    const notifications = staffSnapshot.docs.map(doc =>
+      sendNotification(doc.id, title, body, ticketId)
+    );
+
+    await Promise.all(notifications);
   } else {
     // Staff sent it. Notify Client.
     if (senderId !== clientUserId) {
