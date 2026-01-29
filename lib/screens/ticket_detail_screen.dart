@@ -23,6 +23,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   final _commentController = TextEditingController();
   final _firestoreService = FirestoreService();
   bool _isSending = false;
+  late Stream<Ticket?> _ticketStream;
 
   // State for pagination
   final List<Comment> _comments = [];
@@ -37,6 +38,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _ticketStream = _firestoreService.getTicketStream(widget.ticketId);
     _initialFetchTime = DateTime.now();
     _fetchInitialComments();
     _listenForNewComments();
@@ -66,6 +68,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         }
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(TicketDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ticketId != widget.ticketId) {
+      _ticketStream = _firestoreService.getTicketStream(widget.ticketId);
+      // Reset comments logic if ticket changes
+      _comments.clear();
+      _isLoading = true;
+      _hasMore = true;
+      _lastDoc = null;
+      _newCommentsSubscription?.cancel();
+      _initialFetchTime = DateTime.now();
+      _fetchInitialComments();
+      _listenForNewComments();
+    }
   }
 
   @override
@@ -359,7 +378,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         elevation: 1,
       ),
       body: StreamBuilder<Ticket?>(
-        stream: _firestoreService.getTicketStream(widget.ticketId),
+        stream: _ticketStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
