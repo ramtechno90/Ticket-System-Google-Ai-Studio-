@@ -35,9 +35,11 @@ async function sendNotification(userId, title, body, ticketId) {
         body: body,
       },
       android: {
+        priority: "high",
         notification: {
           tag: notificationRef.id, // Unique identity for each notification
-          channel_id: "high_importance_channel"
+          channel_id: "high_importance_channel_v2",
+          sound: "default"
         }
       },
       data: {

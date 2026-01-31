@@ -20,6 +20,19 @@ class NotificationService {
     );
     await _localNotifications.initialize(initializationSettings);
 
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidImplementation?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'high_importance_channel_v2', // id
+        'High Importance Notifications', // title
+        importance: Importance.max,
+        playSound: true,
+      ),
+    );
+
     // 2. Request FCM Permission
     NotificationSettings settings = await _fcm.requestPermission(
       alert: true,
@@ -51,7 +64,7 @@ class NotificationService {
             notification.body,
             const NotificationDetails(
               android: AndroidNotificationDetails(
-                'high_importance_channel', // id
+                'high_importance_channel_v2', // id
                 'High Importance Notifications', // title
                 importance: Importance.max,
                 priority: Priority.high,
