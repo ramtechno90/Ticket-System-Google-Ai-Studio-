@@ -38,8 +38,9 @@ async function sendNotification(userId, title, body, ticketId) {
         priority: "high",
         notification: {
           tag: notificationRef.id, // Unique identity for each notification
-          channel_id: "high_importance_channel_v2",
-          sound: "default"
+          channelId: "high_importance_channel_v2",
+          sound: "default",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK"
         }
       },
       data: {
