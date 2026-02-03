@@ -27,7 +27,7 @@ service cloud.firestore {
 
     // Checks if the user should be able to read a given ticket
     function canReadTicket(ticket) {
-      return isManufacturer() || (userDocExists() && ticket.data.clientId == getUserClientId());
+      return isManufacturer() || (userDocExists() && (ticket.data.clientId == getUserClientId() || ticket.data.userId == request.auth.uid));
     }
 
     match /users/{userId} {
@@ -45,9 +45,9 @@ service cloud.firestore {
       // Clients can only update specific fields (like re-opening or deleting).
       allow update: if isSignedIn() && 
         (isManufacturer() || 
-          (resource.data.clientId == getUserClientId() && (
+          (resource.data.userId == request.auth.uid && (
             // Allow client to re-open a resolved ticket
-            (resource.data.status == 'Resolved' && request.resource.data.status == 'Acknowledged') ||
+            (resource.data.status == 'Resolved' && request.resource.data.status == 'Acknowledge') ||
             // Allow client to mark for deletion
             (request.resource.data.deletedByClient == true && resource.data.deletedByClient == false)
           ))
