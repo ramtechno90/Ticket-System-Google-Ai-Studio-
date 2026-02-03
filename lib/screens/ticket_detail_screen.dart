@@ -22,6 +22,7 @@ class TicketDetailScreen extends StatefulWidget {
 class _TicketDetailScreenState extends State<TicketDetailScreen> {
   final _commentController = TextEditingController();
   final _firestoreService = FirestoreService();
+  final _commentFocusNode = FocusNode();
   bool _isSending = false;
 
   // State for pagination
@@ -46,16 +47,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       bool isShort = MediaQuery.of(context).size.height < 600;
       bool useParentScroll = !isWide || isShort;
 
-      if (useParentScroll) {
-        // Mobile: Parent Scroll (SingleChildScrollView)
-        // List is reversed (Oldest at Top). We load more when scrolling Up (to Top).
-        // Since SingleChildScrollView starts at 0 (Top), checking <= 200 handles "Near Top".
-        if (_scrollController.position.pixels <= 200 &&
-            !_isLoadingMore &&
-            _hasMore) {
-          _fetchMoreComments();
-        }
-      } else {
+      if (!useParentScroll) {
         // Desktop: ListView Scroll (reverse: true)
         // 0 is Bottom (Newest). MaxScrollExtent is Top (Oldest).
         // We load more when near MaxScrollExtent.
@@ -71,6 +63,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _commentFocusNode.dispose();
     _scrollController.dispose();
     _newCommentsSubscription?.cancel();
     super.dispose();
@@ -453,6 +446,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       child: Column(
                         children: [
                           TextField(
+                            key: const ValueKey('commentInput'),
+                            focusNode: _commentFocusNode,
                             controller: _commentController,
                             decoration: const InputDecoration(hintText: 'Write your reply...', border: InputBorder.none),
                             maxLines: 3,
@@ -487,7 +482,19 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   itemCount: _comments.length + (_hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _comments.length) {
-                      return _isLoadingMore ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator())) : const SizedBox.shrink();
+                      if (_hasMore) {
+                        if (_isLoadingMore) {
+                          return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()));
+                        } else {
+                          return Center(
+                            child: TextButton(
+                              onPressed: _fetchMoreComments,
+                              child: const Text('Load older comments'),
+                            ),
+                          );
+                        }
+                      }
+                      return const SizedBox.shrink();
                     }
                     return _buildCommentItem(_comments[index]);
                   },
