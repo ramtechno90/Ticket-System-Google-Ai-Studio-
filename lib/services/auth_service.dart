@@ -31,11 +31,12 @@ class AuthService extends ChangeNotifier {
         _currentUser = userProfile;
       } else {
         // Create the user document if it doesn't exist
-        // This ensures subsequent writes (like token saving) succeed
+        // Default to client_user.
+        // Admin/Staff roles should be set manually in Firestore Console for security.
         final newUser = UserModel(
           uid: firebaseUser.uid,
           email: firebaseUser.email ?? '',
-          role: UserRole.client_user, // Default role
+          role: UserRole.client_user,
           name: firebaseUser.displayName ?? 'User',
           clientId: 'unknown',
         );
@@ -44,7 +45,6 @@ class AuthService extends ChangeNotifier {
       }
 
       // Save Token via NotificationService
-      // We rely on the fact that the user document now exists (or will shortly)
       NotificationService().saveToken(firebaseUser.uid);
     }
     

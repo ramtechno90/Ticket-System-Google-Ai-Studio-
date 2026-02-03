@@ -9,6 +9,7 @@ setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
 
 // Helper to send notification
 async function sendNotification(userId, title, body, ticketId) {
+  console.log(`[sendNotification] preparing for User: ${userId}, Ticket: ${ticketId}`);
   try {
     // 1. Create Notification Document in Firestore
     const notificationRef = await db.collection("notifications").add({
@@ -19,13 +20,18 @@ async function sendNotification(userId, title, body, ticketId) {
       timestamp: Date.now(),
       isRead: false
     });
+    console.log(`[sendNotification] Firestore notification created: ${notificationRef.id}`);
 
     // 2. Send FCM
     const userDoc = await db.collection("users").doc(userId).get();
-    if (!userDoc.exists) return;
+    if (!userDoc.exists) {
+      console.log(`[sendNotification] User document not found for ${userId}`);
+      return;
+    }
 
     const userData = userDoc.data();
     const tokens = userData.fcmTokens || [];
+    console.log(`[sendNotification] Found ${tokens.length} tokens for user ${userId}`);
 
     if (tokens.length === 0) return;
 
@@ -37,31 +43,42 @@ async function sendNotification(userId, title, body, ticketId) {
       android: {
         priority: "high",
         notification: {
-          tag: notificationRef.id, // Unique identity for each notification
+          tag: notificationRef.id,
           channelId: "high_importance_channel_v2",
           sound: "default",
           clickAction: "FLUTTER_NOTIFICATION_CLICK"
         }
       },
       data: {
-        ticketId: ticketId,
+        ticketId: String(ticketId), // Ensure string
         click_action: "FLUTTER_NOTIFICATION_CLICK",
-        notificationId: notificationRef.id
+        notificationId: String(notificationRef.id) // Ensure string
       },
       tokens: tokens,
     };
 
-    const response = await admin.messaging().sendMulticast(message);
+    console.log(`[sendNotification] Sending multicast message...`);
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`[sendNotification] Response: Success=${response.successCount}, Failure=${response.failureCount}`);
 
-    // Optional: Cleanup invalid tokens
+    // Cleanup invalid tokens
     if (response.failureCount > 0) {
       const failedTokens = [];
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
-          failedTokens.push(tokens[idx]);
+          const error = resp.error;
+          console.error(`[sendNotification] Error for token ${tokens[idx]}:`, error);
+          if (error && (
+            error.code === 'messaging/invalid-registration-token' ||
+            error.code === 'messaging/registration-token-not-registered'
+          )) {
+            failedTokens.push(tokens[idx]);
+          }
         }
       });
+
       if (failedTokens.length > 0) {
+        console.log(`[sendNotification] Removing ${failedTokens.length} invalid tokens`);
         await db.collection("users").doc(userId).update({
           fcmTokens: admin.firestore.FieldValue.arrayRemove(...failedTokens)
         });
@@ -77,14 +94,19 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
   const comment = event.data.data();
   const ticketId = event.params.ticketId;
 
+  console.log(`[notifyOnComment] Triggered for Ticket ${ticketId}, Comment User: ${comment.userId}`);
+
   // Get ticket to know who is who
   const ticketDoc = await db.collection("tickets").doc(ticketId).get();
-  if (!ticketDoc.exists) return;
+  if (!ticketDoc.exists) {
+    console.log(`[notifyOnComment] Ticket ${ticketId} not found`);
+    return;
+  }
   const ticket = ticketDoc.data();
 
   const senderId = comment.userId;
   const senderRole = comment.userRole;
-  const clientUserId = ticket.userId;
+  const clientUserId = ticket.userId || ticket.clientId; // fallback if userId missing but clientId exists?
 
   // Define notification details
   let title = `Ticket #${ticketId} Update`;
@@ -101,17 +123,21 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
   // 2. If Staff sent it -> Notify Client (unless Client is the sender, which shouldn't happen for staff role, but safety first)
 
   if (senderRole === 'client_user') {
+    console.log(`[notifyOnComment] Sender is client, notifying staff...`);
     // Notify Manufacturer (All support agents/admins)
     const staffSnapshot = await db.collection("users")
       .where("role", "in", ["support_agent", "supervisor", "admin"])
       .get();
+
+    console.log(`[notifyOnComment] Found ${staffSnapshot.size} staff members`);
 
     const notifications = staffSnapshot.docs.map(doc =>
       sendNotification(doc.id, title, body, ticketId)
     );
 
     await Promise.all(notifications);
-  } else { // Staff sent it, or system message triggered by staff
+  } else {
+    console.log(`[notifyOnComment] Sender is staff, notifying client ${clientUserId || 'UNKNOWN'}...`);
     // Notify the original client who created the ticket
     if (clientUserId) {
       await sendNotification(
@@ -120,6 +146,8 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
         body,
         ticketId
       );
+    } else {
+      console.log(`[notifyOnComment] No clientUserId found on ticket, skipping client notification.`);
     }
   }
 });
