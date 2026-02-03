@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/create_ticket_screen.dart';
@@ -119,24 +120,25 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
         ),
       ],
     );
-    _requestAndSetupNotifications();
+    _setupNotifications();
   }
 
-  void _requestAndSetupNotifications() async {
-    // Request permissions
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
+  void _setupNotifications() async {
+    // Initialize Notification Service (Requests permission, sets up local notifications)
+    await NotificationService().initialize();
 
-    // Setup notification listeners
-    _setupNotificationListeners();
+    // Setup navigation listeners
+    // 1. Terminated State: App opened from notification
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        _handleNotificationClick(message);
+      }
+    });
+
+    // 2. Background State: App opened from notification
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleNotificationClick(message);
+    });
   }
 
   @override
@@ -149,30 +151,6 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
       ),
       routerConfig: _router,
     );
-  }
-
-  void _setupNotificationListeners() {
-    // 1. Terminated State: App opened from notification
-    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-      if (message != null) {
-        _handleNotificationClick(message);
-      }
-    });
-
-    // 2. Background State: App opened from notification
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleNotificationClick(message);
-    });
-
-    // 3. Foreground State: App is open
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // Here you could show a local notification or a snackbar
-      // For simplicity, we can show a SnackBar if we are in a valid context
-      // But MaterialApp.router context is above the Navigator.
-      // We rely on the system tray notification which usually doesn't show in foreground on iOS unless configured.
-      // On Android it doesn't show by default in foreground.
-      // To show foreground notification properly requires flutter_local_notifications.
-    });
   }
 
   void _handleNotificationClick(RemoteMessage message) {

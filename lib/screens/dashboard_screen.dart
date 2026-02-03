@@ -5,7 +5,6 @@ import '../models/ticket_model.dart';
 import '../models/enums.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../services/notification_service.dart';
 import '../widgets/stats_card.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -18,17 +17,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   TicketStatus? _filterStatus;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = Provider.of<AuthService>(context, listen: false).currentUser;
-      if (user != null) {
-        NotificationService().init(user.uid);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

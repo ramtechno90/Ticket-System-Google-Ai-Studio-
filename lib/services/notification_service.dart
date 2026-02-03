@@ -4,11 +4,20 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
+  // Singleton pattern
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId) async {
+  bool _isInitialized = false;
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
     // 1. Initialize Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -41,17 +50,6 @@ class NotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      // Get token
-      String? token = await _fcm.getToken();
-      if (token != null) {
-        await _saveToken(userId, token);
-      }
-
-      // Handle token refresh
-      _fcm.onTokenRefresh.listen((newToken) {
-        _saveToken(userId, newToken);
-      });
-
       // Listen for Foreground Messages to show Local Notification
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         RemoteNotification? notification = message.notification;
@@ -75,14 +73,29 @@ class NotificationService {
         }
       });
     }
+
+    _isInitialized = true;
   }
 
-  Future<void> _saveToken(String userId, String token) async {
-    // We use arrayUnion to add the token without overwriting others (e.g. multiple devices)
-    // Note: In a production app, you might want to remove old tokens.
-    await _db.collection('users').doc(userId).update({
-      'fcmTokens': FieldValue.arrayUnion([token]),
-    });
+  Future<void> saveToken(String userId) async {
+    try {
+      String? token = await _fcm.getToken();
+      if (token != null) {
+        // Use set with merge: true to handle missing docs or fields gracefully
+        await _db.collection('users').doc(userId).set({
+          'fcmTokens': FieldValue.arrayUnion([token]),
+        }, SetOptions(merge: true));
+      }
+
+      // Handle token refresh
+      _fcm.onTokenRefresh.listen((newToken) {
+        _db.collection('users').doc(userId).set({
+          'fcmTokens': FieldValue.arrayUnion([newToken]),
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      print("Error saving FCM token: $e");
+    }
   }
 
   Stream<List<NotificationModel>> getNotifications(String userId) {
