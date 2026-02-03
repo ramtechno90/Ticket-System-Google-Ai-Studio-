@@ -174,20 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             child: const Text('Staff Agent', textScaler: TextScaler.linear(0.9)),
                           ),
-                          OutlinedButton(
-                             style: OutlinedButton.styleFrom(
-                               side: const BorderSide(color: Colors.green),
-                               foregroundColor: Colors.green,
-                             ),
-                            onPressed: () {
-                              // Generates a somewhat random email for testing new user creation
-                              // In a real app, this would be sign-up logic.
-                              final timestamp = DateTime.now().millisecondsSinceEpoch % 1000;
-                              _emailController.text = 'test_client_$timestamp@example.com';
-                              _passwordController.text = 'password123';
-                            },
-                            child: const Text('New Test Client', textScaler: TextScaler.linear(0.9)),
-                          ),
                         ],
                       ),
                     ],
