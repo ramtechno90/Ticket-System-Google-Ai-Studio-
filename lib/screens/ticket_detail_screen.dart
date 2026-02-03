@@ -34,10 +34,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   final _scrollController = ScrollController();
   StreamSubscription<List<Comment>>? _newCommentsSubscription;
   DateTime? _initialFetchTime;
+  late Stream<Ticket?> _ticketStream;
 
   @override
   void initState() {
     super.initState();
+    _ticketStream = _firestoreService.getTicketStream(widget.ticketId);
     _initialFetchTime = DateTime.now();
     _fetchInitialComments();
     _listenForNewComments();
@@ -352,7 +354,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         elevation: 1,
       ),
       body: StreamBuilder<Ticket?>(
-        stream: _firestoreService.getTicketStream(widget.ticketId),
+        stream: _ticketStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
