@@ -1,4 +1,5 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -149,5 +150,73 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
     } else {
       console.log(`[notifyOnComment] No clientUserId found on ticket, skipping client notification.`);
     }
+  }
+});
+
+// Callable Function: Create Client User
+exports.createClientUser = onCall(async (request) => {
+  // 1. Check if user is authenticated
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+
+  // 2. Check if user is a manufacturer (staff)
+  const callerUid = request.auth.uid;
+  const callerDoc = await db.collection('users').doc(callerUid).get();
+
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user profile not found.');
+  }
+
+  const callerRole = callerDoc.data().role;
+  const manufacturerRoles = ['support_agent', 'supervisor', 'admin', 'lead_supervisor', 'lead_support_agent'];
+
+  if (!manufacturerRoles.includes(callerRole)) {
+    throw new HttpsError('permission-denied', 'Only manufacturers can create client accounts.');
+  }
+
+  // 3. Extract data
+  const { email, password, name, clientId } = request.data;
+
+  if (!email || !password || !name || !clientId) {
+    throw new HttpsError('invalid-argument', 'Missing required fields: email, password, name, clientId.');
+  }
+
+  try {
+    // 4. Create Authentication User
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: password,
+      displayName: name,
+    });
+
+    console.log(`[createClientUser] Auth user created: ${userRecord.uid}`);
+
+    // 5. Create Firestore User Document
+    await db.collection('users').doc(userRecord.uid).set({
+      uid: userRecord.uid,
+      email: email,
+      name: name,
+      role: 'client_user',
+      clientId: clientId,
+      createdAt: Date.now(),
+      createdBy: callerUid
+    });
+
+    console.log(`[createClientUser] Firestore document created for ${userRecord.uid}`);
+
+    return {
+      success: true,
+      uid: userRecord.uid,
+      message: 'Client account created successfully'
+    };
+
+  } catch (error) {
+    console.error('[createClientUser] Error:', error);
+    // Convert Firebase Auth errors to HttpsError
+    if (error.code === 'auth/email-already-exists') {
+      throw new HttpsError('already-exists', 'The email address is already in use.');
+    }
+    throw new HttpsError('internal', 'Unable to create client account: ' + error.message);
   }
 });

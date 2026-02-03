@@ -28,10 +28,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final isClient = user.role == UserRole.client_user;
+    final isManufacturer = !isClient;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB), // gray-50
       appBar: AppBar(
-        title: Text(user.role == UserRole.client_user 
+        title: Text(isClient
           ? '${user.clientName ?? "Client"} Dashboard' 
           : 'Manufacturer Support'),
         actions: [
@@ -219,14 +222,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         },
       ),
-      floatingActionButton: user.role == UserRole.client_user
-          ? FloatingActionButton(
-              onPressed: () {
-                context.push('/new-ticket');
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          if (isClient) {
+            context.push('/new-ticket');
+          } else {
+            // Navigate to create client screen for manufacturers
+             context.push('/create-client');
+          }
+        },
+        icon: Icon(isClient ? Icons.add : Icons.person_add),
+        label: Text(isClient ? 'New Ticket' : 'Add Client'),
+      ),
     );
   }
 }
