@@ -155,26 +155,38 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Row(
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                _emailController.text = 'client@apple.com';
-                                _passwordController.text = 'password123';
-                              },
-                              child: const Text('Client (Apple)', textScaler: TextScaler.linear(0.9)),
-                            ),
+                          OutlinedButton(
+                            onPressed: () {
+                              _emailController.text = 'client@apple.com';
+                              _passwordController.text = 'password123';
+                            },
+                            child: const Text('Client (Apple)', textScaler: TextScaler.linear(0.9)),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                _emailController.text = 'agent@factory.com';
-                                _passwordController.text = 'password123';
-                              },
-                              child: const Text('Staff Agent', textScaler: TextScaler.linear(0.9)),
-                            ),
+                          OutlinedButton(
+                            onPressed: () {
+                              _emailController.text = 'agent@factory.com';
+                              _passwordController.text = 'password123';
+                            },
+                            child: const Text('Staff Agent', textScaler: TextScaler.linear(0.9)),
+                          ),
+                          OutlinedButton(
+                             style: OutlinedButton.styleFrom(
+                               side: const BorderSide(color: Colors.green),
+                               foregroundColor: Colors.green,
+                             ),
+                            onPressed: () {
+                              // Generates a somewhat random email for testing new user creation
+                              // In a real app, this would be sign-up logic.
+                              final timestamp = DateTime.now().millisecondsSinceEpoch % 1000;
+                              _emailController.text = 'test_client_$timestamp@example.com';
+                              _passwordController.text = 'password123';
+                            },
+                            child: const Text('New Test Client', textScaler: TextScaler.linear(0.9)),
                           ),
                         ],
                       ),
