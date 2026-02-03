@@ -128,7 +128,7 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
     await NotificationService().initialize(
       onNotificationClick: (ticketId) {
         if (ticketId.isNotEmpty) {
-           _router.push('/ticket/$ticketId');
+           _navigateToTicket(ticketId);
         }
       }
     );
@@ -162,9 +162,30 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
   void _handleNotificationClick(RemoteMessage message) {
     if (message.data.containsKey('ticketId')) {
       final ticketId = message.data['ticketId'];
-      // Navigate to the ticket
-      // We need to wait for auth to be ready ideally, but GoRouter redirect will handle it if not logged in.
-      _router.push('/ticket/$ticketId');
+      _navigateToTicket(ticketId);
+    }
+  }
+
+  void _navigateToTicket(String ticketId) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    // If auth is still loading, wait for it to finish before navigating
+    if (authService.isLoading) {
+      void listener() {
+        if (!authService.isLoading) {
+          authService.removeListener(listener);
+          // Check again if logged in (might have failed)
+          if (authService.currentUser != null) {
+            _router.push('/ticket/$ticketId');
+          }
+        }
+      }
+      authService.addListener(listener);
+    } else {
+      // Ready to go
+      if (authService.currentUser != null) {
+        _router.push('/ticket/$ticketId');
+      }
     }
   }
 }
