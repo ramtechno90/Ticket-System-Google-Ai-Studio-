@@ -124,8 +124,14 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
   }
 
   void _setupNotifications() async {
-    // Initialize Notification Service (Requests permission, sets up local notifications)
-    await NotificationService().initialize();
+    // Initialize Notification Service with callback
+    await NotificationService().initialize(
+      onNotificationClick: (ticketId) {
+        if (ticketId.isNotEmpty) {
+           _router.push('/ticket/$ticketId');
+        }
+      }
+    );
 
     // Setup navigation listeners
     // 1. Terminated State: App opened from notification

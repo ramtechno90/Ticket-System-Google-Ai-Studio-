@@ -15,7 +15,7 @@ class NotificationService {
 
   bool _isInitialized = false;
 
-  Future<void> initialize() async {
+  Future<void> initialize({Function(String)? onNotificationClick}) async {
     if (_isInitialized) return;
 
     // 1. Initialize Local Notifications
@@ -27,7 +27,15 @@ class NotificationService {
       android: initializationSettingsAndroid,
       iOS: initializationSettingsDarwin,
     );
-    await _localNotifications.initialize(initializationSettings);
+
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload != null && onNotificationClick != null) {
+          onNotificationClick(response.payload!);
+        }
+      },
+    );
 
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
         _localNotifications.resolvePlatformSpecificImplementation<
@@ -56,19 +64,23 @@ class NotificationService {
         AndroidNotification? android = message.notification?.android;
 
         if (notification != null && android != null) {
+          // Extract ticketId from data payload
+          String? ticketId = message.data['ticketId'];
+
           _localNotifications.show(
             notification.hashCode,
             notification.title,
             notification.body,
-            const NotificationDetails(
+            NotificationDetails(
               android: AndroidNotificationDetails(
                 'high_importance_channel_v2', // id
                 'High Importance Notifications', // title
                 importance: Importance.max,
                 priority: Priority.high,
               ),
-              iOS: DarwinNotificationDetails(),
+              iOS: const DarwinNotificationDetails(),
             ),
+            payload: ticketId, // Pass ticketId as payload
           );
         }
       });
