@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:cross_file/cross_file.dart';
 import '../models/user_model.dart';
 import '../models/ticket_model.dart';
 import '../models/comment_model.dart';
 import '../models/enums.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -35,6 +39,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   StreamSubscription<List<Comment>>? _newCommentsSubscription;
   DateTime? _initialFetchTime;
   late Stream<Ticket?> _ticketStream;
+  final List<PlatformFile> _selectedFiles = [];
 
   @override
   void initState() {
@@ -136,16 +141,54 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     });
   }
 
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: true,
+      withData: true,
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedFiles.addAll(result.files);
+      });
+    }
+  }
+
+  void _removeFile(PlatformFile file) {
+    setState(() {
+      _selectedFiles.remove(file);
+    });
+  }
+
   Future<void> _submitComment() async {
-    if (_commentController.text.trim().isEmpty) return;
+    if (_commentController.text.trim().isEmpty && _selectedFiles.isEmpty) return;
     setState(() => _isSending = true);
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final user = authService.currentUser!;
+      final storageService = StorageService();
+
+      final commentId = DateTime.now().millisecondsSinceEpoch.toString();
+      List<String> attachmentUrls = [];
+
+      for (var file in _selectedFiles) {
+        String path = 'tickets/${widget.ticketId}/comments/$commentId/${file.name}';
+        XFile xFile;
+        if (file.bytes != null) {
+           xFile = XFile.fromData(file.bytes!, name: file.name);
+        } else if (file.path != null && !kIsWeb) {
+           xFile = XFile(file.path!, name: file.name);
+        } else {
+           continue;
+        }
+        String url = await storageService.uploadFile(file: xFile, path: path);
+        attachmentUrls.add(url);
+      }
 
       final comment = Comment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: commentId,
         ticketId: widget.ticketId,
         userId: user.uid,
         userName: user.name,
@@ -153,10 +196,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         text: _commentController.text.trim(),
         timestamp: DateTime.now(),
         clientId: user.clientId,
+        attachments: attachmentUrls,
       );
 
       await _firestoreService.addComment(widget.ticketId, comment);
       _commentController.clear();
+      setState(() {
+        _selectedFiles.clear();
+      });
       // New comment will be added via the real-time listener
     } catch (e) {
       if (mounted) {
@@ -296,6 +343,50 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
+  Widget _buildFilePreviews() {
+    if (_selectedFiles.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _selectedFiles.map((file) {
+          return Stack(
+            alignment: Alignment.topRight,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: file.bytes != null
+                      ? Image.memory(file.bytes!, fit: BoxFit.cover)
+                      : const Icon(Icons.image, color: Colors.grey),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _removeFile(file),
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 12, color: Colors.white),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildCommentItem(Comment comment) {
     if (comment.isSystemMessage) {
       return Center(
@@ -334,7 +425,30 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(comment.text),
+          if (comment.text.isNotEmpty) Text(comment.text),
+          if (comment.attachments.isNotEmpty) ...[
+            if (comment.text.isNotEmpty) const SizedBox(height: 8),
+            Wrap(
+               spacing: 8,
+               runSpacing: 8,
+               children: comment.attachments.map((url) =>
+                  GestureDetector(
+                    onTap: () {
+                         showDialog(context: context, builder: (_) => Dialog(child: Image.network(url)));
+                    },
+                    child: Container(
+                       width: 100,
+                       height: 100,
+                       decoration: BoxDecoration(
+                         borderRadius: BorderRadius.circular(8),
+                         border: Border.all(color: Colors.grey.shade200),
+                         image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+                       ),
+                    ),
+                  )
+               ).toList(),
+            ),
+          ]
         ],
       ),
     );
@@ -433,6 +547,31 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         Text(ticket.subject, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         Text(ticket.description, style: const TextStyle(fontSize: 15, height: 1.5)),
+                         if (ticket.attachments.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text('Attachments:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: ticket.attachments.map((url) =>
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(context: context, builder: (_) => Dialog(child: Image.network(url)));
+                              },
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                  image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+                                ),
+                              ),
+                            )
+                          ).toList(),
+                        ),
+                      ]
                       ],
                     ),
                   );
@@ -446,6 +585,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           TextField(
                             key: const ValueKey('commentInput'),
@@ -454,10 +594,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                             decoration: const InputDecoration(hintText: 'Write your reply...', border: InputBorder.none),
                             maxLines: 3,
                           ),
+                          _buildFilePreviews(),
                           const Divider(),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              IconButton(
+                                icon: const Icon(Icons.attach_file, color: Colors.grey),
+                                onPressed: _pickFiles,
+                                tooltip: 'Attach photos',
+                              ),
                               ElevatedButton.icon(
                                 onPressed: _isSending ? null : _submitComment,
                                 icon: const Icon(Icons.send, size: 16),

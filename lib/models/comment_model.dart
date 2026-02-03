@@ -10,6 +10,7 @@ class Comment {
   final DateTime timestamp;
   final bool isSystemMessage;
   final String? clientId;
+  final List<String> attachments;
 
   Comment({
     required this.id,
@@ -21,6 +22,7 @@ class Comment {
     required this.timestamp,
     this.isSystemMessage = false,
     this.clientId,
+    this.attachments = const [],
   });
 
   factory Comment.fromMap(Map<String, dynamic> data, String id) {
@@ -34,6 +36,7 @@ class Comment {
       timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp'] ?? 0),
       isSystemMessage: data['isSystemMessage'] ?? false,
       clientId: data['clientId'],
+      attachments: List<String>.from(data['attachments'] ?? []),
     );
   }
 
@@ -47,6 +50,7 @@ class Comment {
       'timestamp': timestamp.millisecondsSinceEpoch,
       'isSystemMessage': isSystemMessage,
       'clientId': clientId,
+      'attachments': attachments,
     };
   }
 }
