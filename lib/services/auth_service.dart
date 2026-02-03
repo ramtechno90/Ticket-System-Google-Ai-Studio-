@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Added
+import 'package:firebase_messaging/firebase_messaging.dart'; // Added
 import '../models/user_model.dart';
-import '../models/enums.dart'; // Added
+import '../models/enums.dart';
 import 'firestore_service.dart';
 
 class AuthService extends ChangeNotifier {
@@ -28,6 +30,7 @@ class AuthService extends ChangeNotifier {
       
       if (userProfile != null) {
         _currentUser = userProfile;
+        _saveTokenToDatabase(firebaseUser.uid); // Save FCM token
       } else {
         // Fallback if no profile found (or create one?)
         _currentUser = UserModel(
@@ -44,6 +47,21 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _saveTokenToDatabase(String userId) async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        final tokensRef = FirebaseFirestore.instance.collection('users').doc(userId);
+        await tokensRef.update({
+          'fcmTokens': FieldValue.arrayUnion([fcmToken]),
+        });
+      }
+    } catch (e) {
+      // Could not save token
+      print("Error saving FCM token: $e");
+    }
+  }
+
   Future<void> signInWithEmailAndPassword(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
@@ -53,6 +71,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // Consider removing the token on sign out if appropriate
     await _auth.signOut();
   }
 }

@@ -111,9 +111,9 @@ exports.notifyOnComment = onDocumentCreated("tickets/{ticketId}/comments/{commen
     );
 
     await Promise.all(notifications);
-  } else {
-    // Staff sent it. Notify Client.
-    if (senderId !== clientUserId) {
+  } else { // Staff sent it, or system message triggered by staff
+    // Notify the original client who created the ticket
+    if (clientUserId) {
       await sendNotification(
         clientUserId,
         title,

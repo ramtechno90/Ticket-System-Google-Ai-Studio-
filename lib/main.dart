@@ -119,13 +119,28 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
         ),
       ],
     );
+    _requestAndSetupNotifications();
+  }
+
+  void _requestAndSetupNotifications() async {
+    // Request permissions
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    // Setup notification listeners
+    _setupNotificationListeners();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Setup notification listeners once the router is ready
-    _setupNotificationListeners();
-
     return MaterialApp.router(
       title: 'Ticketing System',
       theme: ThemeData(

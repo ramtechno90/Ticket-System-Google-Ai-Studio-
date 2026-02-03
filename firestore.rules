@@ -40,14 +40,18 @@ service cloud.firestore {
       allow read: if isSignedIn() && canReadTicket(resource);
       
       allow create: if isSignedIn() && !isManufacturer();
-      allow update: if isSignedIn() && (
-        (resource.data.userId == request.auth.uid && (
-           request.resource.data.status == 'Acknowledge' ||
-           (request.resource.data.keys().hasAny(['deletedByClient']) && request.resource.data.deletedByClient == true) ||
-           resource.data.isInternal == false
-        )) || 
-        isManufacturer()
-      );
+      
+      // Staff can update any part of the ticket.
+      // Clients can only update specific fields (like re-opening or deleting).
+      allow update: if isSignedIn() && 
+        (isManufacturer() || 
+          (resource.data.userId == request.auth.uid && (
+            // Allow client to re-open a resolved ticket
+            (resource.data.status == 'Resolved' && request.resource.data.status == 'Acknowledged') ||
+            // Allow client to mark for deletion
+            (request.resource.data.deletedByClient == true && resource.data.deletedByClient == false)
+          ))
+        );
 
       match /comments/{commentId} {
         // A user can read/create a comment if they can read the parent ticket.
