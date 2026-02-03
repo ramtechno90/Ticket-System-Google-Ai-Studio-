@@ -10,6 +10,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/create_ticket_screen.dart';
 import 'screens/ticket_detail_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/create_client_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Handle background messages
@@ -117,6 +118,10 @@ class _MaterialAppWithRouterState extends State<MaterialAppWithRouter> {
         GoRoute(
           path: '/notifications',
           builder: (context, state) => const NotificationsScreen(),
+        ),
+        GoRoute(
+          path: '/create-client',
+          builder: (context, state) => const CreateClientScreen(),
         ),
       ],
     );
