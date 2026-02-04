@@ -13,6 +13,7 @@ import '../models/enums.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import 'image_viewer_screen.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -271,6 +272,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
+  void _openImage(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ImageViewerScreen(imageUrl: url),
+      ),
+    );
+  }
+
   Widget _buildActionButtons(Ticket ticket, UserModel user) {
     bool isManufacturer = [UserRole.support_agent, UserRole.supervisor, UserRole.admin].contains(user.role);
     List<Widget> buttons = [];
@@ -433,9 +442,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                runSpacing: 8,
                children: comment.attachments.map((url) =>
                   GestureDetector(
-                    onTap: () {
-                         showDialog(context: context, builder: (_) => Dialog(child: Image.network(url)));
-                    },
+                    onTap: () => _openImage(url),
                     child: Container(
                        width: 100,
                        height: 100,
@@ -556,9 +563,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                           runSpacing: 8,
                           children: ticket.attachments.map((url) =>
                             GestureDetector(
-                              onTap: () {
-                                showDialog(context: context, builder: (_) => Dialog(child: Image.network(url)));
-                              },
+                              onTap: () => _openImage(url),
                               child: Container(
                                 width: 80,
                                 height: 80,
