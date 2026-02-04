@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:gal/gal.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 
 class ImageViewerScreen extends StatefulWidget {
   final String imageUrl;
@@ -45,26 +42,6 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     }
   }
 
-  Future<bool> _requestPermission() async {
-    if (Platform.isAndroid) {
-       final androidInfo = await DeviceInfoPlugin().androidInfo;
-       if (androidInfo.version.sdkInt >= 33) {
-         // Android 13+ uses Scoped Storage or specific media permissions.
-         // Saving images usually doesn't require explicit write permission if using MediaStore.
-         // We can try to proceed without requesting storage permission.
-         return true;
-       }
-
-       // For older Android versions, request storage permission
-       var status = await Permission.storage.status;
-       if (!status.isGranted) {
-         status = await Permission.storage.request();
-       }
-       return status.isGranted;
-    }
-    return true; // iOS usually handles via plist usage description
-  }
-
   Future<void> _downloadImage() async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,18 +50,24 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       return;
     }
 
-    // Request permissions first
-    bool hasPermission = await _requestPermission();
-    if (!hasPermission) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission denied to save image')),
-        );
-      }
-      return;
-    }
-
+    // Gal handles permission requests automatically or we can check
+    // Ideally we assume it handles it or we request it.
+    // For simplicity and robustness with Gal, we can try to save directly
+    // but requesting access first is better UX to handle denial.
     try {
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess();
+        if (!granted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Permission denied to save image')),
+            );
+          }
+          return;
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Downloading image...')),
@@ -96,22 +79,15 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
         options: Options(responseType: ResponseType.bytes),
       );
 
-      final result = await ImageGallerySaver.saveImage(
+      await Gal.putImageBytes(
         Uint8List.fromList(response.data),
-        quality: 100,
         name: "downloaded_image_${DateTime.now().millisecondsSinceEpoch}",
       );
 
       if (mounted) {
-        if (result['isSuccess'] == true || result == true) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image saved to gallery')),
-          );
-        } else {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to save image')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image saved to gallery')),
+        );
       }
     } catch (e) {
       if (mounted) {
