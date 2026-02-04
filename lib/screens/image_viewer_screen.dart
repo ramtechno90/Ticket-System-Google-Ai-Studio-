@@ -6,10 +6,22 @@ class ImageViewerScreen extends StatelessWidget {
 
   const ImageViewerScreen({super.key, required this.imageUrl});
 
-  Future<void> _downloadImage() async {
+  Future<void> _downloadImage(BuildContext context) async {
     final Uri uri = Uri.parse(imageUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open image in browser')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening image: $e')),
+        );
+      }
     }
   }
 
@@ -23,7 +35,7 @@ class ImageViewerScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
-            onPressed: _downloadImage,
+            onPressed: () => _downloadImage(context),
             tooltip: 'Download',
           ),
         ],
