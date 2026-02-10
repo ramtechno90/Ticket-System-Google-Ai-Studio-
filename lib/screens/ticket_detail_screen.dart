@@ -51,20 +51,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _listenForNewComments();
 
     _scrollController.addListener(() {
-      bool isWide = MediaQuery.of(context).size.width > 800;
-      bool isShort = MediaQuery.of(context).size.height < 600;
-      bool useParentScroll = !isWide || isShort;
-
-      if (!useParentScroll) {
-        // Desktop: ListView Scroll (reverse: true)
-        // 0 is Bottom (Newest). MaxScrollExtent is Top (Oldest).
-        // We load more when near MaxScrollExtent.
-        if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
-            !_isLoadingMore &&
-            _hasMore) {
-          _fetchMoreComments();
-        }
-      }
+      // In wide layout, the main scroll controller is used by the SingleChildScrollView
+      // Pagination logic might need to check the scroll position differently or rely on manual loading.
+      // For simplicity, we keep manual loading button visible when needed.
+      if (!mounted) return;
     });
   }
 
@@ -75,6 +65,25 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _scrollController.dispose();
     _newCommentsSubscription?.cancel();
     super.dispose();
+  }
+
+  String _lookupMimeType(String name) {
+    final extension = name.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'bmp':
+        return 'image/bmp';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   Future<void> _fetchInitialComments() async {
@@ -177,10 +186,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       for (var file in _selectedFiles) {
         String path = 'tickets/${widget.ticketId}/comments/$commentId/${file.name}';
         XFile xFile;
+        String mimeType = _lookupMimeType(file.name);
         if (file.bytes != null) {
-           xFile = XFile.fromData(file.bytes!, name: file.name);
+           xFile = XFile.fromData(file.bytes!, name: file.name, mimeType: mimeType);
         } else if (file.path != null && !kIsWeb) {
-           xFile = XFile(file.path!, name: file.name);
+           xFile = XFile(file.path!, name: file.name, mimeType: mimeType);
         } else {
            continue;
         }
@@ -645,16 +655,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     )
                   : const SizedBox.shrink();
               
-              Widget buildTimeline({bool forceScrollable = false}) {
+              Widget buildTimeline({bool shrinkWrap = false, ScrollPhysics? physics}) {
                 if (_isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final useParentScroll = !isWide || forceScrollable;
+
                 return ListView.builder(
                   reverse: true,
-                  controller: useParentScroll ? null : _scrollController,
-                  shrinkWrap: useParentScroll,
-                  physics: useParentScroll ? const NeverScrollableScrollPhysics() : null,
+                  controller: shrinkWrap ? null : _scrollController,
+                  shrinkWrap: shrinkWrap,
+                  physics: physics,
                   itemCount: _comments.length + (_hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _comments.length) {
@@ -678,61 +688,42 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               }
 
               Widget buildMainContent() {
-                final timeline = buildTimeline(forceScrollable: isShort);
+                // In wide mode (inside SingleChildScrollView), we use shrinkWrap and no physics
+                // In mobile mode (inside SingleChildScrollView), we also use shrinkWrap and no physics
+                final timeline = buildTimeline(shrinkWrap: true, physics: const NeverScrollableScrollPhysics());
 
-                if (isWide && !isShort) {
-                  return Column(
+                return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
-                      Expanded(child: timeline),
+                      timeline,
                       const SizedBox(height: 16),
                       buildCommentInput(),
-                      // SizedBox removed
                     ],
                   );
-                } else {
-                  return SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildDescriptionCard(),
-                        const SizedBox(height: 24),
-                        const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 16),
-                        timeline,
-                        const SizedBox(height: 16),
-                        buildCommentInput(),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  );
-                }
               }
 
               if (isWide) {
-                return Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: SizedBox(
-                    height: constraints.maxHeight - 48,
+                return SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(flex: 2, child: buildMainContent()),
                         const SizedBox(width: 24),
                         Expanded(
                           flex: 1,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                buildDescriptionCard(),
-                                const SizedBox(height: 16),
-                                buildStatus(),
-                                const SizedBox(height: 16),
-                                _buildActionButtons(ticket, user),
-                              ],
-                            ),
+                          child: Column(
+                            children: [
+                              buildDescriptionCard(),
+                              const SizedBox(height: 16),
+                              buildStatus(),
+                              const SizedBox(height: 16),
+                              _buildActionButtons(ticket, user),
+                            ],
                           ),
                         ),
                       ],
@@ -754,7 +745,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       const SizedBox(height: 24),
                       const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
-                      buildTimeline(),
+                      buildTimeline(shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
                       const SizedBox(height: 16),
                       buildCommentInput(),
                       const SizedBox(height: 32), // Bottom padding
