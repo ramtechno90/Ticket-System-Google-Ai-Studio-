@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:url_launcher/url_launcher.dart'; // Added
 import '../models/user_model.dart';
 import '../models/ticket_model.dart';
 import '../models/comment_model.dart';
@@ -283,11 +284,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   void _openImage(String url) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ImageViewerScreen(imageUrl: url),
-      ),
-    );
+    if (kIsWeb) {
+      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ImageViewerScreen(imageUrl: url),
+        ),
+      );
+    }
   }
 
   Widget _buildActionButtons(Ticket ticket, UserModel user) {
@@ -466,11 +471,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                             height: 100,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                               return Container(
-                                 width: 100,
-                                 height: 100,
-                                 color: Colors.grey.shade200,
-                                 child: const Icon(Icons.broken_image, color: Colors.grey),
+                               return GestureDetector(
+                                 onTap: () => _openImage(url),
+                                 child: Container(
+                                   width: 100,
+                                   height: 100,
+                                   color: Colors.grey.shade200,
+                                   child: const Column(
+                                     mainAxisAlignment: MainAxisAlignment.center,
+                                     children: [
+                                       Icon(Icons.broken_image, color: Colors.grey),
+                                       SizedBox(height: 4),
+                                       Text('Tap to view', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                     ],
+                                   ),
+                                 ),
                                );
                             },
                             loadingBuilder: (context, child, loadingProgress) {
