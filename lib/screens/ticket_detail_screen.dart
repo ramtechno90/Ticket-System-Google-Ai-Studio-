@@ -444,13 +444,36 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   GestureDetector(
                     onTap: () => _openImage(url),
                     child: Container(
-                       width: 100,
-                       height: 100,
-                       decoration: BoxDecoration(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: ClipRRect(
                          borderRadius: BorderRadius.circular(8),
-                         border: Border.all(color: Colors.grey.shade200),
-                         image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
-                       ),
+                         child: Image.network(
+                            url,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                               return Container(
+                                 width: 100,
+                                 height: 100,
+                                 color: Colors.grey.shade200,
+                                 child: const Icon(Icons.broken_image, color: Colors.grey),
+                               );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                               if (loadingProgress == null) return child;
+                               return Container(
+                                 width: 100,
+                                 height: 100,
+                                 color: Colors.grey.shade200,
+                                 child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                               );
+                            },
+                         ),
+                      ),
                     ),
                   )
                ).toList(),
@@ -661,14 +684,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildDescriptionCard(),
-                      const SizedBox(height: 24),
                       const Text('Communication Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
                       Expanded(child: timeline),
                       const SizedBox(height: 16),
                       buildCommentInput(),
-                      const SizedBox(height: 32),
+                      // SizedBox removed
                     ],
                   );
                 } else {
@@ -693,24 +714,29 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               if (isWide) {
                 return Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 2, child: buildMainContent()),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        flex: 1,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              buildStatus(),
-                              const SizedBox(height: 16),
-                              _buildActionButtons(ticket, user),
-                            ],
+                  child: SizedBox(
+                    height: constraints.maxHeight - 48,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 2, child: buildMainContent()),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          flex: 1,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                buildDescriptionCard(),
+                                const SizedBox(height: 16),
+                                buildStatus(),
+                                const SizedBox(height: 16),
+                                _buildActionButtons(ticket, user),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               } else {
